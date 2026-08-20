@@ -1,0 +1,296 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useProject } from '@/context/ProjectContext';
+import { Zap, CheckCircle2, Building2, Users, Shield, ArrowRight, Loader2, Award, Sparkles, Lock } from 'lucide-react';
+import CheckoutModal from '@/components/checkout/CheckoutModal';
+
+const PLANS = [
+  {
+    id: 'Gratuito',
+    name: 'Plano Gratuito (Isca)',
+    badge: 'Degustação / Teste',
+    price: 0,
+    priceLabel: 'R$ 0',
+    period: '/mês',
+    maxProjects: 1,
+    maxUnits: 4,
+    features: [
+      '1 Obra Ativa',
+      'Limite Rígido de até 4 Kitnets/Unidades',
+      'Entrada Manual de Dados',
+      'Orçamento Executivo Básico',
+      'Contas a Pagar & Receber',
+      'Ideal para Testar a Ferramenta',
+    ],
+  },
+  {
+    id: 'Pro',
+    name: 'Kitneteiro Pro',
+    badge: 'Mais Popular ⚡',
+    price: 49,
+    priceLabel: 'R$ 49',
+    period: '/mês',
+    isPopular: true,
+    maxProjects: 1,
+    maxUnits: 999,
+    features: [
+      '1 Obra Ativa (Construção Principal)',
+      'Kitnets / Unidades ILIMITADAS (ex: 10, 12 ou mais)',
+      'Entrada Manual de Dados Completa',
+      'Gestão Avançada de Orçamento & Etapas',
+      'Cotações & Comparativo de Fornecedores',
+      'Gestão Completa de Compras & Contas a Pagar',
+      'Fluxo de Caixa & Gráficos Financeiros',
+      'Exportação de Dados',
+    ],
+  },
+  {
+    id: 'Premium',
+    name: 'Kitneteiro Premium (SINAPI & IA)',
+    badge: 'Inteligência & Multi-Obras 🚀',
+    price: 99,
+    priceLabel: 'R$ 99',
+    period: '/mês',
+    maxProjects: 5,
+    maxUnits: 999,
+    features: [
+      'Até 5 Obras Simultâneas',
+      'Kitnets / Unidades ILIMITADAS por Obra',
+      'Integração com Tabela SINAPI (Preços Automáticos)',
+      'Rateio / Divisão Automática de Compras em Lote',
+      'Relatórios Profissionais Customizados (PDF / Excel)',
+      'Alertas Financeiros & Lembretes no WhatsApp',
+      'Importação de Orçamentos via Excel',
+      'Suporte Prioritário por WhatsApp com Especialista',
+    ],
+  },
+];
+
+export default function PlanosPage() {
+  const { user, updateCompanySession } = useAuth();
+  const { projects } = useProject();
+  const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<{
+    id: string;
+    title: string;
+    price: number;
+  } | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const currentCompany = user?.company;
+  const currentPlan = currentCompany?.planName || 'Kitneteiro Premium';
+  const currentMaxProjects = currentCompany?.maxProjects || 5;
+
+  const handleSelectPlan = (plan: typeof PLANS[0]) => {
+    setMessage(null);
+
+    // Se for um plano PAGO (Pro ou Premium), EXIGE CHECKOUT DE PAGAMENTO!
+    if (plan.price > 0) {
+      setSelectedPlanForCheckout({
+        id: plan.id,
+        title: plan.name,
+        price: plan.price,
+      });
+      return;
+    }
+
+    // Se for o plano Gratuito, permite mudar sem pagamento
+    handleDowngradeToFree();
+  };
+
+  const handleDowngradeToFree = async () => {
+    if (!currentCompany) return;
+    setLoadingPlan('Gratuito');
+    try {
+      const res = await fetch('/api/planos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: currentCompany.id,
+          planName: 'Gratuito',
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        updateCompanySession(data.company);
+        setMessage({ type: 'success', text: 'Plano alterado para Gratuito.' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Erro ao alterar plano.' });
+      }
+    } catch (e) {
+      console.error(e);
+      setMessage({ type: 'error', text: 'Erro de conexão com o servidor.' });
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  return (
+    <div className="space-y-8 pb-12">
+      {/* Modal de Checkout / Pagamento */}
+      {selectedPlanForCheckout && (
+        <CheckoutModal
+          isOpen={!!selectedPlanForCheckout}
+          onClose={() => setSelectedPlanForCheckout(null)}
+          planId={selectedPlanForCheckout.id}
+          planTitle={selectedPlanForCheckout.title}
+          planPrice={selectedPlanForCheckout.price}
+        />
+      )}
+
+      {/* Header da Página */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
+        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold uppercase tracking-wider">
+              <Zap className="w-3.5 h-3.5" />
+              <span>Planos Futura Gestão de Obras</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Planos & Assinatura do Kitneteiro</h1>
+            <p className="text-sm text-slate-400 max-w-xl">
+              Escolha o plano sob medida para suas kitnets. Assinatura segura via <strong className="text-white">PIX Instantâneo</strong> ou <strong className="text-white">Cartão de Crédito</strong>.
+            </p>
+          </div>
+
+          {/* Card de Status de Consumo */}
+          <div className="bg-slate-800/90 border border-slate-700/80 p-4 rounded-2xl space-y-3 min-w-[260px]">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+              <span>SEU PLANO ATUAL</span>
+              <span className="text-emerald-400 font-mono font-extrabold">{currentPlan}</span>
+            </div>
+
+            {/* Progresso de Obras */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Obras Ativas:</span>
+                <span className="font-bold text-white">{projects.length} / {currentMaxProjects}</span>
+              </div>
+              <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((projects.length / currentMaxProjects) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-700/60 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>Unidades por Obra:</span>
+              <span className="text-emerald-300 font-bold">
+                {currentPlan.includes('Gratuito') ? 'Até 4 Kitnets' : 'Ilimitadas 🔥'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alertas de Retorno */}
+      {message && (
+        <div
+          className={`p-4 rounded-2xl text-xs font-bold border flex items-center justify-between ${
+            message.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+          }`}
+        >
+          <span>{message.text}</span>
+          <button onClick={() => setMessage(null)} className="opacity-70 hover:opacity-100">✕</button>
+        </div>
+      )}
+
+      {/* Grid de Planos SaaS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {PLANS.map((plan) => {
+          const isCurrent = currentPlan.toLowerCase().includes(plan.id.toLowerCase());
+          return (
+            <div
+              key={plan.id}
+              className={`rounded-3xl border p-6 flex flex-col justify-between transition-all duration-300 relative ${
+                plan.isPopular
+                  ? 'bg-slate-900 border-emerald-500/50 shadow-2xl shadow-emerald-950/50 scale-102'
+                  : 'bg-white border-slate-200 shadow-lg hover:border-slate-300'
+              }`}
+            >
+              {plan.isPopular && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-500 text-slate-950 text-[10px] font-extrabold tracking-wider uppercase rounded-full shadow-md">
+                  RECOMENDADO PARA KITNETEIROS
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                    plan.isPopular ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-100 text-slate-700'
+                  }`}>
+                    {plan.badge}
+                  </span>
+                  {isCurrent && (
+                    <span className="inline-flex items-center text-xs font-extrabold text-emerald-500">
+                      <Award className="w-4 h-4 mr-1" />
+                      PLANO ATIVO
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className={`text-xl font-bold ${plan.isPopular ? 'text-white' : 'text-slate-900'}`}>
+                    {plan.name}
+                  </h3>
+                  <div className="mt-2 flex items-baseline space-x-1">
+                    <span className={`text-3xl font-extrabold ${plan.isPopular ? 'text-white' : 'text-slate-900'}`}>
+                      {plan.priceLabel}
+                    </span>
+                    <span className={`text-xs font-medium ${plan.isPopular ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {plan.period}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={`pt-4 border-t ${plan.isPopular ? 'border-slate-800' : 'border-slate-100'} space-y-2.5`}>
+                  {plan.features.map((feat, idx) => (
+                    <div key={idx} className="flex items-start space-x-2.5 text-xs">
+                      <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                        plan.isPopular ? 'text-emerald-400' : 'text-emerald-600'
+                      }`} />
+                      <span className={plan.isPopular ? 'text-slate-300' : 'text-slate-600'}>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-8 pt-4">
+                <button
+                  disabled={isCurrent || loadingPlan === plan.id}
+                  onClick={() => handleSelectPlan(plan)}
+                  className={`w-full py-3.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center space-x-2 cursor-pointer ${
+                    isCurrent
+                      ? 'bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700'
+                      : plan.isPopular
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20'
+                      : 'bg-slate-900 hover:bg-slate-800 text-white'
+                  }`}
+                >
+                  {loadingPlan === plan.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-current" />
+                  ) : isCurrent ? (
+                    <span>Seu Plano Atual</span>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>{plan.price > 0 ? `Pagar & Assinar ${plan.name.split(' ')[0]}` : 'Ativar Plano Gratuito'}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

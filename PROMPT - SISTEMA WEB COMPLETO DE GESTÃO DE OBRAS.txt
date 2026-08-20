@@ -1,0 +1,970 @@
+# DESENVOLVA UM SISTEMA WEB COMPLETO DE GESTÃO DE OBRAS
+
+Quero que você atue simultaneamente como:
+
+* Arquiteto de software
+* Engenheiro de software sênior
+* Especialista em UX/UI
+* Especialista em gestão de obras
+* Especialista em orçamento de construção civil
+* Especialista em compras e suprimentos
+* Especialista financeiro
+* Especialista em bancos de dados
+* Especialista em dashboards e BI
+
+Sua missão é **projetar e desenvolver um aplicativo web completo para gerenciamento financeiro, orçamentário e operacional de uma obra**, baseado na estrutura descrita abaixo.
+
+Não quero apenas uma demonstração visual ou protótipo. Quero uma aplicação funcional, com banco de dados, autenticação, CRUDs, relacionamentos, cálculos automáticos, filtros, dashboard e regras de negócio.
+
+---
+
+# 1. OBJETIVO DO SISTEMA
+
+O sistema deverá permitir controlar uma obra desde o orçamento inicial até a execução financeira.
+
+O fluxo principal deverá ser:
+
+**CENTRO DE CUSTO**
+→ **ORÇAMENTO**
+→ **COTAÇÕES**
+→ **ESCOLHA DO FORNECEDOR**
+→ **CONTRATAÇÃO**
+→ **COMPRA/LANÇAMENTO**
+→ **CONTAS A PAGAR**
+→ **PAGAMENTO**
+→ **REALIZADO**
+→ **COMPARAÇÃO ORÇADO x REALIZADO**
+→ **DASHBOARD**
+
+Todas essas informações precisam estar conectadas.
+
+O usuário nunca deverá precisar cadastrar a mesma informação várias vezes.
+
+---
+
+# 2. PERFIL DO SISTEMA
+
+O sistema deverá ser preparado inicialmente para pequenas e médias obras, mas a arquitetura deve permitir futuramente:
+
+* múltiplas obras;
+* múltiplos usuários;
+* diferentes níveis de acesso;
+* diferentes empresas;
+* vários fornecedores;
+* várias obras simultâneas.
+
+Criar a estrutura pensando em SaaS desde o início.
+
+---
+
+# 3. TECNOLOGIA
+
+Antes de começar o desenvolvimento, escolha uma stack moderna, estável e adequada para aplicação web.
+
+Preferência:
+
+Frontend:
+
+* React / Next.js
+* TypeScript
+* Tailwind CSS
+
+Backend:
+
+* Node.js / Next.js API ou tecnologia equivalente
+
+Banco:
+
+* PostgreSQL
+
+Autenticação:
+
+* Login seguro
+* E-mail e senha
+* Recuperação de senha
+* Controle de sessão
+
+Gráficos:
+
+* Biblioteca moderna de gráficos
+
+A aplicação deverá ser:
+
+* responsiva;
+* desktop-first, mas funcionando perfeitamente em celular;
+* rápida;
+* moderna;
+* escalável;
+* segura;
+* preparada para produção.
+
+Se você escolher outra stack, explique antes o motivo.
+
+---
+
+# 4. ESTRUTURA PRINCIPAL DO SISTEMA
+
+Criar um menu lateral com:
+
+1. Dashboard
+2. Obras
+3. Centros de Custos
+4. Orçamento Executivo
+5. Fornecedores
+6. Cotações
+7. Compras
+8. Contas a Pagar
+9. Pagamentos
+10. Fluxo de Caixa
+11. Relatórios
+12. Configurações
+
+---
+
+# 5. OBRAS
+
+Criar cadastro de obras.
+
+Campos:
+
+* ID
+* Nome da obra
+* Cliente/proprietário
+* Endereço
+* Cidade
+* Estado
+* Data de início
+* Previsão de término
+* Área do terreno
+* Área construída
+* Quantidade de unidades
+* Descrição
+* Status:
+
+  * Planejamento
+  * Em andamento
+  * Pausada
+  * Concluída
+  * Cancelada
+
+Uma mesma conta poderá ter várias obras.
+
+Todas as informações financeiras deverão estar vinculadas a uma obra.
+
+---
+
+# 6. CENTROS DE CUSTOS
+
+Criar cadastro de centros de custos.
+
+Criar inicialmente os seguintes:
+
+01 — Projetos e Engenharia
+02 — Documentação e Aprovações
+03 — Serviços Preliminares
+04 — Terraplenagem e Movimento de Terra
+05 — Fundações
+06 — Estrutura
+07 — Alvenaria e Divisórias
+08 — Cobertura
+09 — Instalações Hidráulicas
+10 — Instalações Elétricas
+11 — Gás / Incêndio / Segurança
+12 — Esquadrias e Vidros
+13 — Revestimentos
+14 — Pisos e Rodapés
+15 — Louças e Metais
+16 — Pintura
+17 — Marmoraria
+18 — Marcenaria / Móveis Planejados
+19 — Área Externa / Calçada
+20 — Muro, Portão e Fechamentos
+21 — Mão de Obra Geral
+22 — Equipamentos e Locação
+23 — Fretes e Transportes
+24 — Canteiro e Consumo
+25 — Administração da Obra
+26 — Contingência / Reserva
+
+Permitir criar, editar, excluir e desativar centros de custo.
+
+---
+
+# 7. FORNECEDORES
+
+Criar cadastro completo de fornecedores.
+
+Campos:
+
+* ID
+* Razão social
+* Nome fantasia
+* CNPJ/CPF
+* Pessoa de contato
+* Telefone
+* WhatsApp
+* E-mail
+* Endereço
+* Cidade
+* Estado
+* Tipo:
+
+  * Material
+  * Mão de obra
+  * Serviço
+  * Equipamento
+  * Projeto
+  * Frete
+  * Outros
+* Observações
+
+Permitir pesquisar e filtrar fornecedores.
+
+---
+
+# 8. ORÇAMENTO EXECUTIVO
+
+Essa é uma das partes mais importantes do sistema.
+
+Cada obra deverá possuir seu próprio orçamento executivo.
+
+Cada item do orçamento deverá possuir:
+
+* Código
+* Centro de custo
+* Etapa
+* Serviço/item
+* Descrição
+* Unidade
+* Quantidade
+* Fornecedor 1
+* Cotação 1
+* Fornecedor 2
+* Cotação 2
+* Fornecedor 3
+* Cotação 3
+* Menor cotação
+* Fornecedor escolhido
+* Preço contratado
+* Total contratado
+* Total comprado
+* Total pago
+* Saldo
+* Status
+* Observações
+
+O sistema deverá calcular automaticamente:
+
+**Menor Cotação = menor preço entre as três cotações**
+
+**Total Contratado = Quantidade × Preço Contratado**
+
+**Saldo = Total Contratado − Total Pago**
+
+---
+
+# 9. SISTEMA DE COTAÇÕES
+
+Criar uma área específica para cotações.
+
+O usuário deverá conseguir cadastrar uma cotação para determinado item.
+
+Uma cotação deverá possuir:
+
+* Obra
+* Item do orçamento
+* Fornecedor
+* Data
+* Validade da proposta
+* Quantidade
+* Preço unitário
+* Frete
+* Desconto
+* Impostos, quando aplicável
+* Preço final
+* Prazo de entrega
+* Condição de pagamento
+* Observações
+* Anexo da proposta/orçamento
+
+Permitir até 3 fornecedores por item inicialmente.
+
+Mostrar uma comparação visual:
+
+| Item | Fornecedor 1 | Fornecedor 2 | Fornecedor 3 | Melhor preço |
+| ---- | -----------: | -----------: | -----------: | -----------: |
+
+Destacar automaticamente o menor preço.
+
+---
+
+# 10. COMPRAS
+
+Criar módulo de compras.
+
+Uma compra deverá estar obrigatoriamente vinculada a:
+
+* Obra
+* Centro de custo
+* Item do orçamento
+* Fornecedor
+
+Campos:
+
+* Número da compra
+* Data
+* Fornecedor
+* NF/Recibo
+* Descrição
+* Quantidade
+* Unidade
+* Valor unitário
+* Desconto
+* Frete
+* Valor total
+* Condição de pagamento
+* Data de vencimento
+* Observações
+* Anexos
+
+Ao registrar uma compra:
+
+* atualizar automaticamente o valor realizado do orçamento;
+* atualizar o centro de custo;
+* atualizar o fornecedor;
+* gerar automaticamente uma conta a pagar quando necessário.
+
+---
+
+# 11. CONTAS A PAGAR
+
+Criar módulo financeiro.
+
+Cada lançamento deverá possuir:
+
+* ID
+* Obra
+* Centro de custo
+* Compra relacionada
+* Fornecedor
+* Documento
+* Descrição
+* Valor
+* Data de emissão
+* Data de vencimento
+* Data de pagamento
+* Forma de pagamento
+* Conta bancária
+* Status
+* Observações
+
+Status automáticos:
+
+🟢 PAGO
+🟡 A VENCER
+🔴 VENCIDO
+
+Regra:
+
+Se possuir data de pagamento:
+→ PAGO
+
+Se não possuir pagamento e vencimento >= hoje:
+→ A VENCER
+
+Se não possuir pagamento e vencimento < hoje:
+→ VENCIDO
+
+Também calcular:
+
+**Dias em atraso = Hoje − Data de Vencimento**
+
+quando estiver vencido.
+
+---
+
+# 12. CORES DO SISTEMA
+
+Utilizar as cores:
+
+🟢 Verde:
+Pagamento realizado.
+
+🟡 Amarelo:
+Pagamento ainda não realizado, mas dentro do prazo.
+
+🔴 Vermelho:
+Pagamento vencido.
+
+Essas cores devem aparecer:
+
+* na tabela;
+* nos cards;
+* no dashboard;
+* nos relatórios.
+
+---
+
+# 13. FLUXO DE CAIXA
+
+Criar fluxo financeiro por:
+
+* dia;
+* semana;
+* mês;
+* período personalizado.
+
+Mostrar:
+
+* Entradas
+* Saídas
+* Contas pagas
+* Contas a pagar
+* Contas vencidas
+* Saldo projetado
+* Saldo realizado
+
+Criar gráfico de fluxo de caixa.
+
+---
+
+# 14. DASHBOARD
+
+Criar um dashboard profissional.
+
+No topo apresentar cards:
+
+### ORÇAMENTO CONTRATADO
+
+Valor total contratado.
+
+### TOTAL COMPRADO
+
+Total das compras realizadas.
+
+### TOTAL PAGO
+
+Total efetivamente pago.
+
+### A PAGAR
+
+Total das contas ainda abertas.
+
+### VENCIDO
+
+Valor total vencido.
+
+### SALDO DO ORÇAMENTO
+
+Orçamento − realizado.
+
+### % DO ORÇAMENTO CONSUMIDO
+
+Realizado ÷ orçamento.
+
+### ECONOMIA NAS COTAÇÕES
+
+Mostrar quanto foi economizado escolhendo a melhor cotação em relação à maior cotação.
+
+---
+
+# 15. GRÁFICOS DO DASHBOARD
+
+Criar:
+
+### Gráfico 1
+
+Orçado x Contratado x Realizado por centro de custo.
+
+### Gráfico 2
+
+Evolução dos gastos por mês.
+
+### Gráfico 3
+
+Contas:
+
+* Pagas
+* A vencer
+* Vencidas
+
+### Gráfico 4
+
+Distribuição dos gastos por centro de custo.
+
+### Gráfico 5
+
+Fluxo de caixa.
+
+### Gráfico 6
+
+Top 10 fornecedores por volume comprado.
+
+---
+
+# 16. ALERTAS
+
+O sistema deverá apresentar alertas automáticos.
+
+Exemplos:
+
+🔴 5 contas vencidas.
+
+🟡 12 contas vencendo nos próximos 7 dias.
+
+🔴 Centro de custo acima do orçamento.
+
+🟠 Item comprado acima do valor contratado.
+
+🟢 Economia obtida em determinada cotação.
+
+Criar uma área:
+
+**"Atenção necessária"**
+
+no dashboard.
+
+---
+
+# 17. CONTROLE ORÇAMENTÁRIO
+
+Criar regras para impedir perda de controle.
+
+Quando uma compra ultrapassar o valor contratado, mostrar alerta:
+
+"Esta compra ultrapassa o orçamento contratado para este item."
+
+Mostrar:
+
+* Orçamento
+* Contratado
+* Compra atual
+* Realizado acumulado
+* Saldo
+* Excedente
+
+Permitir configurar se o sistema:
+
+1. Apenas alerta;
+2. Solicita confirmação;
+3. Bloqueia a compra.
+
+---
+
+# 18. RELATÓRIOS
+
+Criar relatórios:
+
+### Relatório financeiro
+
+* Compras
+* Pagamentos
+* Contas vencidas
+* Contas a vencer
+
+### Relatório por centro de custo
+
+Mostrar:
+
+* Orçado
+* Contratado
+* Realizado
+* Saldo
+* % consumido
+
+### Relatório de fornecedores
+
+Mostrar:
+
+* Fornecedor
+* Total comprado
+* Quantidade de compras
+* Ticket médio
+* Valor pago
+* Valor em aberto
+
+### Relatório de orçamento
+
+Mostrar:
+
+* Item
+* Quantidade
+* Orçamento
+* Cotação
+* Contratado
+* Realizado
+* Saldo
+
+Permitir exportar para:
+
+* Excel
+* PDF
+* CSV
+
+---
+
+# 19. ANEXOS
+
+Permitir anexar documentos em:
+
+* Cotação
+* Compra
+* Nota fiscal
+* Recibo
+* Contrato
+* Comprovante de pagamento
+
+---
+
+# 20. BUSCA E FILTROS
+
+Todas as tabelas importantes deverão possuir:
+
+* Busca
+* Ordenação
+* Filtro por centro de custo
+* Filtro por fornecedor
+* Filtro por período
+* Filtro por status
+* Filtro por obra
+
+---
+
+# 21. EXPERIÊNCIA DO USUÁRIO
+
+A interface deve ser profissional e simples.
+
+Não quero um sistema visualmente carregado.
+
+Utilizar:
+
+* menu lateral;
+* cards;
+* tabelas modernas;
+* filtros;
+* modais;
+* indicadores;
+* gráficos;
+* badges de status.
+
+Priorizar:
+
+**clareza > quantidade de elementos.**
+
+---
+
+# 22. BANCO DE DADOS
+
+Criar banco de dados relacional corretamente normalizado.
+
+Entidades mínimas:
+
+* users
+* companies
+* projects
+* cost_centers
+* suppliers
+* budgets
+* budget_items
+* quotations
+* quotation_items
+* purchases
+* purchase_items
+* accounts_payable
+* payments
+* bank_accounts
+* attachments
+
+Criar corretamente:
+
+* PKs
+* FKs
+* índices
+* timestamps
+* created_at
+* updated_at
+* deleted_at quando necessário
+
+Não duplicar informações desnecessariamente.
+
+---
+
+# 23. REGRAS DE INTEGRIDADE
+
+O sistema deve impedir:
+
+* compra sem obra;
+* compra sem fornecedor;
+* pagamento inexistente;
+* orçamento pertencente a outra obra;
+* fornecedor duplicado desnecessariamente;
+* lançamento financeiro sem origem identificável.
+
+Toda operação deverá preservar a integridade financeira.
+
+---
+
+# 24. AUDITORIA
+
+Criar histórico das principais alterações.
+
+Registrar:
+
+* usuário;
+* data;
+* hora;
+* ação;
+* registro alterado;
+* valor anterior;
+* valor novo.
+
+Exemplo:
+
+"João alterou o preço contratado do item ORC-0045 de R$ 12.500 para R$ 13.200."
+
+---
+
+# 25. SEGURANÇA
+
+Implementar:
+
+* autenticação;
+* autorização;
+* proteção das rotas;
+* validação dos dados;
+* proteção contra SQL Injection;
+* proteção contra XSS;
+* controle de acesso por usuário;
+* isolamento dos dados entre empresas/obras.
+
+---
+
+# 26. RESPONSIVIDADE
+
+O sistema deverá funcionar corretamente em:
+
+* computador;
+* notebook;
+* tablet;
+* celular.
+
+No celular, tabelas grandes deverão possuir rolagem horizontal ou versão adaptada.
+
+---
+
+# 27. DADOS DEMONSTRATIVOS
+
+Criar uma obra demonstrativa para testar o sistema.
+
+Criar:
+
+* 10 fornecedores;
+* 26 centros de custo;
+* pelo menos 30 itens de orçamento;
+* 3 cotações para vários itens;
+* compras;
+* contas pagas;
+* contas a vencer;
+* contas vencidas.
+
+Isso permitirá verificar o dashboard funcionando imediatamente.
+
+---
+
+# 28. IMPORTAÇÃO DA PLANILHA
+
+O sistema deverá permitir futuramente importar os dados da planilha Excel existente.
+
+Criar estrutura preparada para importar:
+
+* Centros de custos
+* Fornecedores
+* Orçamento
+* Compras
+* Contas a pagar
+
+Criar mapeamento das colunas para os campos do banco.
+
+---
+
+# 29. ARQUITETURA
+
+Antes de desenvolver, apresente:
+
+1. Arquitetura da aplicação;
+2. Stack escolhida;
+3. Estrutura do banco;
+4. Diagrama das entidades e relacionamentos;
+5. Estrutura de pastas;
+6. APIs necessárias;
+7. Regras de negócio;
+8. Fluxo de dados.
+
+Depois disso, comece o desenvolvimento.
+
+---
+
+# 30. IMPORTANTE — NÃO FAÇA UM PROTÓTIPO
+
+Não quero apenas:
+
+* telas estáticas;
+* botões sem função;
+* dados falsos sem banco;
+* dashboard decorativo;
+* formulários que não salvam;
+* cálculos apenas no frontend.
+
+Quero um sistema funcional.
+
+Cada cadastro deve salvar no banco.
+
+Cada alteração deve atualizar os dados relacionados.
+
+Os valores do dashboard devem ser calculados a partir dos dados reais do banco.
+
+---
+
+# 31. CRITÉRIO PRINCIPAL DE QUALIDADE
+
+O sistema deverá responder facilmente às seguintes perguntas:
+
+### "Quanto eu tinha previsto gastar?"
+
+→ Orçamento.
+
+### "Quanto já contratei?"
+
+→ Contratado.
+
+### "Quanto já comprei?"
+
+→ Realizado/Comprado.
+
+### "Quanto já paguei?"
+
+→ Pago.
+
+### "Quanto ainda devo?"
+
+→ A pagar.
+
+### "O que está vencido?"
+
+→ Contas vencidas.
+
+### "Onde estou gastando mais?"
+
+→ Centro de custos.
+
+### "Estou acima do orçamento?"
+
+→ Orçado x realizado.
+
+### "Qual fornecedor está me custando mais?"
+
+→ Ranking de fornecedores.
+
+### "Quanto economizei cotando em três lugares?"
+
+→ Economia de cotações.
+
+### "Quanto dinheiro vou precisar nos próximos meses?"
+
+→ Fluxo de caixa projetado.
+
+---
+
+# 32. PRIMEIRA ENTREGA
+
+Não tente construir tudo de uma vez sem validação.
+
+Divida o desenvolvimento em fases:
+
+## FASE 1
+
+* Banco de dados
+* Autenticação
+* Obras
+* Centros de custos
+* Fornecedores
+
+## FASE 2
+
+* Orçamento executivo
+* Cotações
+* Comparação de fornecedores
+
+## FASE 3
+
+* Compras
+* Contas a pagar
+* Pagamentos
+* Fluxo de caixa
+
+## FASE 4
+
+* Dashboard
+* Indicadores
+* Gráficos
+* Alertas
+
+## FASE 5
+
+* Relatórios
+* Exportação
+* Anexos
+* Auditoria
+
+## FASE 6
+
+* Importação Excel
+* Refinamento UX/UI
+* Segurança
+* Testes
+* Performance
+
+Ao terminar cada fase, faça testes e valide as regras de negócio antes de avançar.
+
+---
+
+# 33. REGRA FINAL
+
+Sempre que existir uma informação que possa ser derivada automaticamente de outra, NÃO peça ao usuário para digitá-la novamente.
+
+Exemplo:
+
+Se uma compra estiver vinculada ao orçamento ORC-0015, o sistema deve descobrir automaticamente:
+
+* obra;
+* centro de custo;
+* etapa;
+* item;
+* fornecedor;
+* orçamento;
+* contratado;
+* realizado;
+* saldo.
+
+O objetivo é que o usuário **lance a informação uma única vez e o sistema faça o restante automaticamente.**
+
+Comece apresentando a arquitetura, banco de dados e fluxo do sistema. Depois implemente a FASE 1.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
