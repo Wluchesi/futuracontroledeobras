@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Building2, Plus, Users, Building, ShieldCheck, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 
@@ -12,6 +13,17 @@ export default function EmpresasPage() {
   const [newCompany, setNewCompany] = useState({ name: '', taxId: '', planName: 'Pro' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const router = useRouter();
+  useEffect(() => {
+    if (user && user.role !== 'ADMIN') {
+      router.push('/');
+    }
+  }, [user, router]);
+
+  if (user && user.role !== 'ADMIN') {
+    return null;
+  }
 
   const fetchCompanies = async () => {
     try {

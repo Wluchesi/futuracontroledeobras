@@ -2,12 +2,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { History, Search, User } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/calculations';
 
 export default function AuditoriaPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [logs, setLogs] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user && user.role !== 'ADMIN') {
+      router.push('/');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     async function fetchLogs() {

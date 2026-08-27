@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Users, UserPlus, Shield, Mail, Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function EquipePage() {
   const { user } = useAuth();
@@ -16,6 +17,17 @@ export default function EquipePage() {
   const [error, setError] = useState<string | null>(null);
 
   const currentCompany = user?.company;
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user && user.role !== 'ADMIN') {
+      router.push('/');
+    }
+  }, [user, router]);
+
+  if (user && user.role !== 'ADMIN') {
+    return null; // Prevents flashing the page content before redirect
+  }
 
   const fetchTeam = async () => {
     if (!currentCompany) return;

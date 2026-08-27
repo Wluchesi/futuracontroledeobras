@@ -5,6 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useProject } from '@/context/ProjectContext';
 import { Zap, CheckCircle2, Building2, Users, Shield, ArrowRight, Loader2, Award, Sparkles, Lock } from 'lucide-react';
 import CheckoutModal from '@/components/checkout/CheckoutModal';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const PLANS = [
   {
@@ -82,6 +84,17 @@ export default function PlanosPage() {
   const currentCompany = user?.company;
   const currentPlan = currentCompany?.planName || 'Kitneteiro Premium';
   const currentMaxProjects = currentCompany?.maxProjects || 5;
+
+  const router = useRouter();
+  useEffect(() => {
+    if (user && user.role !== 'ADMIN') {
+      router.push('/');
+    }
+  }, [user, router]);
+
+  if (user && user.role !== 'ADMIN') {
+    return null;
+  }
 
   const handleSelectPlan = (plan: typeof PLANS[0]) => {
     setMessage(null);

@@ -46,14 +46,14 @@ const OPERATIONAL_MENU = [
 ];
 
 const SAAS_MENU = [
-  { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS' },
-  { href: '/empresas', label: 'Empresas (Tenants)', icon: Building },
-  { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck },
+  { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS', adminOnly: true },
+  { href: '/empresas', label: 'Empresas (Tenants)', icon: Building, adminOnly: true },
+  { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck, adminOnly: true },
 ];
 
 const SYSTEM_MENU = [
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
-  { href: '/auditoria', label: 'Auditoria', icon: History },
+  { href: '/auditoria', label: 'Auditoria', icon: History, adminOnly: true },
   { href: '/importar-excel', label: 'Importar Excel', icon: FileUp },
 ];
 
@@ -69,7 +69,10 @@ export default function Sidebar() {
     avatarUrl: user?.avatarUrl,
     companyName: user?.company?.name || 'Construtora',
     planName: user?.company?.planName || 'Premium Multi-Obras',
+    role: user?.role || 'USER',
   };
+
+  const isAdmin = userProfile.role === 'ADMIN';
 
   const renderLink = (item: any) => {
     const Icon = item.icon;
@@ -165,19 +168,21 @@ export default function Sidebar() {
           </div>
 
           {/* Seção SaaS & Gestão */}
-          <div className="space-y-1 pt-2 border-t border-slate-800/60">
-            {!collapsed && (
-              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-400">Plataforma SaaS</span>
-            )}
-            {SAAS_MENU.map(renderLink)}
-          </div>
+          {isAdmin && (
+            <div className="space-y-1 pt-2 border-t border-slate-800/60">
+              {!collapsed && (
+                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-400">Plataforma SaaS</span>
+              )}
+              {SAAS_MENU.map(renderLink)}
+            </div>
+          )}
 
           {/* Seção Sistema */}
           <div className="space-y-1 pt-2 border-t border-slate-800/60">
             {!collapsed && (
               <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Sistema</span>
             )}
-            {SYSTEM_MENU.map(renderLink)}
+            {SYSTEM_MENU.filter(item => !item.adminOnly || isAdmin).map(renderLink)}
           </div>
 
         </nav>
