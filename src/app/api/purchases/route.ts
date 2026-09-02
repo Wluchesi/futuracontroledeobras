@@ -66,7 +66,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Item do orçamento não encontrado.' }, { status: 404 });
     }
 
-    // Auto-resolução da regra de lançamento único
     const projectId = budgetItem.projectId;
     const costCenterId = budgetItem.costCenterId;
     const selectedSupplierId = supplierId || budgetItem.chosenSupplierId;
@@ -81,7 +80,6 @@ export async function POST(request: Request) {
     const frt = Number(freight) || 0;
     const totalAmount = Math.max(0, qty * price - disc + frt);
 
-    // 1. Validar Extrapolação do Orçamento
     const currentPurchased = budgetItem.purchasedTotal;
     const contracted = budgetItem.contractedTotal;
     const projectedPurchased = currentPurchased + totalAmount;
@@ -121,13 +119,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // Gerar Número da Compra Sequencial
     const count = await prisma.purchase.count({ where: { projectId } });
     const purchaseNumber = `COMP-${String(count + 1).padStart(4, '0')}`;
-
     const effectiveDueDate = dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    // 2. Criar Compra
     const purchase = await prisma.purchase.create({
       data: {
         purchaseNumber,
@@ -151,7 +146,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // 3. Atualizar valor realizado (comprado) no Orçamento
     await prisma.budgetItem.update({
       where: { id: budgetItemId },
       data: {
@@ -160,7 +154,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // 4. Gerar Título em Contas a Pagar
     const payableStatus = getAccountPayableStatus(effectiveDueDate);
 
     const accountPayable = await prisma.accountPayable.create({
@@ -194,6 +187,140 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, quantity, unitPrice, discount, freight, description, invoiceNumber, supplierId, paymentCondition, dueDate, notes } = body;
+    if (!id) return NextResponse.json({ error: 'ID da compra é obrigatório.' }, { status: 400 });
+
+    const currentPurchase = await prisma.purchase.findUnique({
+      where: { id },
+      include: { budgetItem: true, accountsPayable: true },
+    });
+
+    if (!currentPurchase) return NextResponse.json({ error: 'Compra não encontrada.' }, { status: 404 });
+
+    const qty = quantity !== undefined ? Number(quantity) : currentPurchase.quantity;
+    const price = unitPrice !== undefined ? Number(unitPrice) : currentPurchase.unitPrice;
+    const disc = discount !== undefined ? Number(discount) : currentPurchase.discount;
+    const frt = freight !== undefined ? Number(freight) : currentPurchase.freight;
+    const totalAmount = Math.max(0, qty * price - disc + frt);
+    const effectiveDueDate = dueDate ? new Date(dueDate) : currentPurchase.dueDate;
+    const suppId = supplierId || currentPurchase.supplierId;
+
+    // Atualizar Compra
+    const updatedPurchase = await prisma.purchase.update({
+      where: { id },
+      data: {
+        quantity: qty,
+        unitPrice: price,
+        discount: disc,
+        freight: frt,
+        totalAmount,
+        description: description || currentPurchase.description,
+        invoiceNumber: invoiceNumber !== undefined ? invoiceNumber : currentPurchase.invoiceNumber,
+        supplierId: suppId,
+        paymentCondition: paymentCondition !== undefined ? paymentCondition : currentPurchase.paymentCondition,
+        dueDate: effectiveDueDate,
+        notes: notes !== undefined ? notes : currentPurchase.notes,
+      },
+    });
+
+    // Atualizar item do orçamento afetado (diferença)
+    const amountDiff = totalAmount - currentPurchase.totalAmount;
+    if (amountDiff !== 0 && currentPurchase.budgetItemId) {
+      const budgetItem = await prisma.budgetItem.findUnique({ where: { id: currentPurchase.budgetItemId } });
+      if (budgetItem) {
+        await prisma.budgetItem.update({
+          where: { id: currentPurchase.budgetItemId },
+          data: {
+            purchasedTotal: Math.max(0, budgetItem.purchasedTotal + amountDiff),
+          },
+        });
+      }
+    }
+
+    // Atualizar Contas a Pagar vinculadas
+    if (currentPurchase.accountsPayable && currentPurchase.accountsPayable.length > 0) {
+      for (const ap of currentPurchase.accountsPayable) {
+        if (ap.status !== 'PAGO') {
+          const statusInfo = getAccountPayableStatus(effectiveDueDate, ap.paymentDate);
+          await prisma.accountPayable.update({
+            where: { id: ap.id },
+            data: {
+              amount: totalAmount,
+              supplierId: suppId,
+              dueDate: effectiveDueDate,
+              documentNumber: invoiceNumber || currentPurchase.purchaseNumber,
+              status: statusInfo.status,
+            },
+          });
+        }
+      }
+    }
+
+    await logAuditAction({
+      action: 'UPDATE',
+      entityName: 'Purchase',
+      entityId: id,
+      previousValue: currentPurchase,
+      newValue: updatedPurchase,
+      details: `Compra ${currentPurchase.purchaseNumber} atualizada. Valor: R$ ${currentPurchase.totalAmount} -> R$ ${totalAmount}.`,
+    });
+
+    return NextResponse.json(updatedPurchase);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID da compra é obrigatório.' }, { status: 400 });
+
+    const purchase = await prisma.purchase.findUnique({
+      where: { id },
+      include: { budgetItem: true, accountsPayable: true },
+    });
+
+    if (!purchase) return NextResponse.json({ error: 'Compra não encontrada.' }, { status: 404 });
+
+    // 1. Remover Contas a Pagar vinculadas não pagas
+    if (purchase.accountsPayable && purchase.accountsPayable.length > 0) {
+      for (const ap of purchase.accountsPayable) {
+        await prisma.accountPayable.delete({ where: { id: ap.id } });
+      }
+    }
+
+    // 2. Deletar compra
+    await prisma.purchase.delete({ where: { id } });
+
+    // 3. Atualizar item de orçamento
+    if (purchase.budgetItemId && purchase.budgetItem) {
+      await prisma.budgetItem.update({
+        where: { id: purchase.budgetItemId },
+        data: {
+          purchasedTotal: Math.max(0, purchase.budgetItem.purchasedTotal - purchase.totalAmount),
+        },
+      });
+    }
+
+    await logAuditAction({
+      action: 'DELETE',
+      entityName: 'Purchase',
+      entityId: id,
+      previousValue: purchase,
+      details: `Compra ${purchase.purchaseNumber} excluída no valor de R$ ${purchase.totalAmount}.`,
+    });
+
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

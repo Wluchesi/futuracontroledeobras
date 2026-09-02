@@ -6,6 +6,23 @@ import { Calculator, Plus, Search, Filter, Edit3, ShoppingCart, FileSpreadsheet 
 import { formatCurrency } from '@/lib/calculations';
 import Link from 'next/link';
 
+const STANDARD_UNITS = [
+  'un',
+  'm²',
+  'm³',
+  'kg',
+  'm',
+  'L',
+  'verba',
+  'hrs',
+  'dia',
+  'mês',
+  'jg',
+  'cx',
+  'saco',
+  'Outra',
+];
+
 export default function OrcamentoExecutivoPage() {
   const { selectedProject } = useProject();
   const [items, setItems] = useState<any[]>([]);
@@ -15,6 +32,7 @@ export default function OrcamentoExecutivoPage() {
   const [selectedCc, setSelectedCc] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [customUnitMode, setCustomUnitMode] = useState(false);
 
   const [formData, setFormData] = useState({
     id: '',
@@ -53,6 +71,20 @@ export default function OrcamentoExecutivoPage() {
     fetchBudget();
   }, [selectedProject]);
 
+  // Handler para trocar Centro de Custo -> Preencher Etapa Automaticamente
+  const handleCostCenterChange = (costCenterId: string) => {
+    const foundCc = costCenters.find((cc) => cc.id === costCenterId);
+    let autoStage = formData.stage;
+    if (foundCc) {
+      autoStage = `${foundCc.code}. ${foundCc.name}`;
+    }
+    setFormData({
+      ...formData,
+      costCenterId,
+      stage: autoStage,
+    });
+  };
+
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -62,7 +94,6 @@ export default function OrcamentoExecutivoPage() {
     return matchesSearch && matchesCc;
   });
 
-  // Somatórias do topo
   const totalOrçado = filteredItems.reduce((acc, i) => acc + (i.contractedTotal || 0), 0);
   const totalComprado = filteredItems.reduce((acc, i) => acc + (i.purchasedTotal || 0), 0);
   const totalPago = filteredItems.reduce((acc, i) => acc + (i.paidTotal || 0), 0);
@@ -90,8 +121,8 @@ export default function OrcamentoExecutivoPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner Header */}
+    <div className="space-y-6 pb-12">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center">
@@ -105,11 +136,13 @@ export default function OrcamentoExecutivoPage() {
         <button
           onClick={() => {
             const nextCode = `ORC-${String(items.length + 1).padStart(4, '0')}`;
+            const firstCc = costCenters[0];
+            const firstStage = firstCc ? `${firstCc.code}. ${firstCc.name}` : '01. Projetos';
             setFormData({
               id: '',
               code: nextCode,
-              costCenterId: costCenters[0]?.id || '',
-              stage: '01. Projetos',
+              costCenterId: firstCc?.id || '',
+              stage: firstStage,
               itemName: '',
               description: '',
               unit: 'un',
@@ -118,16 +151,17 @@ export default function OrcamentoExecutivoPage() {
               chosenSupplierId: '',
               notes: '',
             });
+            setCustomUnitMode(false);
             setShowModal(true);
           }}
-          className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-xs transition"
+          className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-xs transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Novo Item no Orçamento</span>
         </button>
       </div>
 
-      {/* Cards de Resumo Rápido */}
+      {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="glass-card p-4 rounded-2xl border border-slate-200">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Total Contratado</span>
@@ -162,7 +196,7 @@ export default function OrcamentoExecutivoPage() {
         <select
           value={selectedCc}
           onChange={(e) => setSelectedCc(e.target.value)}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-hidden"
+          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-semibold focus:outline-hidden"
         >
           <option value="">Todos os Centros de Custos</option>
           {costCenters.map((cc) => (
@@ -197,7 +231,7 @@ export default function OrcamentoExecutivoPage() {
               {filteredItems.map((item) => (
                 <tr key={item.id} className="table-row-hover">
                   <td className="py-3 px-3 font-mono font-bold text-slate-900">{item.code}</td>
-                  <td className="py-3 px-3 font-semibold text-slate-600">{item.costCenter.code}</td>
+                  <td className="py-3 px-3 font-semibold text-slate-600">{item.costCenter?.code}</td>
                   <td className="py-3 px-3 font-medium text-slate-900 max-w-xs">
                     <div>{item.itemName}</div>
                     <span className="text-[10px] text-slate-400">{item.stage}</span>
@@ -239,6 +273,7 @@ export default function OrcamentoExecutivoPage() {
                             chosenSupplierId: item.chosenSupplierId || '',
                             notes: item.notes || '',
                           });
+                          setCustomUnitMode(!STANDARD_UNITS.includes(item.unit));
                           setShowModal(true);
                         }}
                         className="p-1 text-slate-400 hover:text-slate-800 rounded"
@@ -281,29 +316,32 @@ export default function OrcamentoExecutivoPage() {
                     className="w-full p-2.5 border rounded-xl font-mono"
                   />
                 </div>
+
+                {/* Seleção do Centro de Custo -> Preenche a Etapa automaticamente */}
                 <div className="col-span-2">
                   <label className="font-semibold block mb-1">Centro de Custo</label>
                   <select
                     value={formData.costCenterId}
-                    onChange={(e) => setFormData({ ...formData, costCenterId: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl"
+                    onChange={(e) => handleCostCenterChange(e.target.value)}
+                    className="w-full p-2.5 border rounded-xl font-semibold"
                   >
                     {costCenters.map((cc) => (
                       <option key={cc.id} value={cc.id}>
-                        {cc.code} — {cc.name}
+                        {cc.code} — {cc.name} ({cc.category})
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-semibold block mb-1">Etapa</label>
+                  <label className="font-semibold block mb-1">Etapa (Puxada do Centro de Custo)</label>
                   <input
                     type="text"
                     value={formData.stage}
                     onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl"
+                    className="w-full p-2.5 border rounded-xl font-semibold text-slate-800"
                     placeholder="ex: 05. Fundações"
                   />
                 </div>
@@ -318,21 +356,80 @@ export default function OrcamentoExecutivoPage() {
                   />
                 </div>
               </div>
+
               <div className="grid grid-cols-3 gap-2">
+                {/* Dropdown de Unidades Padrão */}
                 <div>
                   <label className="font-semibold block mb-1">Unidade</label>
-                  <input
-                    type="text"
-                    value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl"
-                    placeholder="m², un, kg, m³"
-                  />
+                  {!customUnitMode ? (
+                    <select
+                      value={STANDARD_UNITS.includes(formData.unit) ? formData.unit : 'Outra'}
+                      onChange={(e) => {
+                        if (e.target.value === 'Outra') {
+                          setCustomUnitMode(true);
+                        } else {
+                          setFormData({ ...formData, unit: e.target.value });
+                        }
+                      }}
+                      className="w-full p-2.5 border rounded-xl font-semibold"
+                    >
+                      {STANDARD_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u === 'un'
+                            ? 'un (Unidade)'
+                            : u === 'm²'
+                            ? 'm² (Metro quadrado)'
+                            : u === 'm³'
+                            ? 'm³ (Metro cúbico)'
+                            : u === 'kg'
+                            ? 'kg (Quilograma)'
+                            : u === 'm'
+                            ? 'm (Metro linear)'
+                            : u === 'L'
+                            ? 'L (Litro)'
+                            : u === 'verba'
+                            ? 'verba (Global)'
+                            : u === 'hrs'
+                            ? 'hrs (Horas)'
+                            : u === 'dia'
+                            ? 'dia (Diária)'
+                            : u === 'mês'
+                            ? 'mês (Mensalidade)'
+                            : u === 'jg'
+                            ? 'jg (Jogo)'
+                            : u === 'cx'
+                            ? 'cx (Caixa)'
+                            : u === 'saco'
+                            ? 'saco (Saco)'
+                            : 'Outra (Digitar...)'}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="flex items-center space-x-1">
+                      <input
+                        type="text"
+                        value={formData.unit}
+                        onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                        className="w-full p-2.5 border rounded-xl"
+                        placeholder="Digitar unidade..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCustomUnitMode(false)}
+                        className="text-[10px] text-slate-400 hover:text-slate-700 underline"
+                      >
+                        Lista
+                      </button>
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <label className="font-semibold block mb-1">Quantidade</label>
                   <input
                     type="number"
+                    step="0.01"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
                     className="w-full p-2.5 border rounded-xl"
@@ -349,8 +446,9 @@ export default function OrcamentoExecutivoPage() {
                   />
                 </div>
               </div>
+
               <div>
-                <label className="font-semibold block mb-1">Fornecedor Escolhido</label>
+                <label className="font-semibold block mb-1 font-semibold">Fornecedor Escolhido</label>
                 <select
                   value={formData.chosenSupplierId}
                   onChange={(e) => setFormData({ ...formData, chosenSupplierId: e.target.value })}
@@ -369,11 +467,11 @@ export default function OrcamentoExecutivoPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">
+                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer">
                   Salvar Item
                 </button>
               </div>

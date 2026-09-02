@@ -37,18 +37,31 @@ export function calculateQuotationFinalPrice(
   return Math.max(0, subtotal + freight + taxes - discount);
 }
 
-export type PayableStatus = 'PAGO' | 'A_VENCER' | 'VENCIDO';
+export type PayableStatus = 'PAGO' | 'PAGO_PARCIAL' | 'A_VENCER' | 'VENCIDO';
 
 export function getAccountPayableStatus(
   dueDateInput: string | Date,
-  paymentDateInput?: string | Date | null
+  paymentDateInput?: string | Date | null,
+  totalPaidAmount: number = 0,
+  totalAccountAmount: number = 0
 ): { status: PayableStatus; daysOverdue: number; label: string; badgeColor: string } {
-  if (paymentDateInput) {
+  // Se pago integralmente ou marcado como pago sem saldo
+  if (paymentDateInput || (totalAccountAmount > 0 && totalPaidAmount >= totalAccountAmount)) {
     return {
       status: 'PAGO',
       daysOverdue: 0,
-      label: '🟢 PAGO',
+      label: '🟢 PAGO INTEGRAL',
       badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+    };
+  }
+
+  // Se houve pagamento parcial
+  if (totalPaidAmount > 0 && totalPaidAmount < totalAccountAmount) {
+    return {
+      status: 'PAGO_PARCIAL',
+      daysOverdue: 0,
+      label: '🔵 PAGO PARCIAL',
+      badgeColor: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800',
     };
   }
 

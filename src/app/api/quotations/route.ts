@@ -33,7 +33,23 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { budgetItemId, projectId, supplierId, date, validityDate, quantity, unitPrice, freight, discount, taxes, deliveryDays, paymentTerms, notes, attachmentUrl, isChosen } = body;
+    const {
+      budgetItemId,
+      projectId,
+      supplierId,
+      date,
+      validityDate,
+      quantity,
+      unitPrice,
+      freight,
+      discount,
+      taxes,
+      deliveryDays,
+      paymentTerms,
+      notes,
+      attachmentUrl,
+      isChosen,
+    } = body;
 
     if (!budgetItemId || !supplierId) {
       return NextResponse.json({ error: 'Item do orçamento e Fornecedor são obrigatórios.' }, { status: 400 });
@@ -50,7 +66,6 @@ export async function POST(request: Request) {
 
     const finalPrice = calculateQuotationFinalPrice(qty, price, frt, disc, tx);
 
-    // Se a nova cotação for selecionada como escolhida, desseleciona outras
     if (isChosen) {
       await prisma.quotation.updateMany({
         where: { budgetItemId },
@@ -72,7 +87,7 @@ export async function POST(request: Request) {
         taxes: tx,
         finalPrice,
         deliveryDays: Number(deliveryDays) || 0,
-        paymentTerms,
+        paymentTerms: paymentTerms || 'À vista',
         notes,
         attachmentUrl,
         isChosen: !!isChosen,
@@ -83,7 +98,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Se foi escolhida, atualiza o item do orçamento
     if (isChosen) {
       const unitPriceComputed = qty > 0 ? finalPrice / qty : price;
       await prisma.budgetItem.update({
@@ -92,7 +106,7 @@ export async function POST(request: Request) {
           chosenSupplierId: supplierId,
           contractedUnitPrice: unitPriceComputed,
           contractedTotal: finalPrice,
-          balance: finalPrice - budgetItem.paidTotal,
+          balance: Math.max(0, finalPrice - budgetItem.paidTotal),
           status: 'CONTRATADO',
         },
       });
@@ -115,7 +129,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, isChosen, ...data } = body;
+    const { id, isChosen, quantity, unitPrice, freight, discount, taxes, supplierId, paymentTerms, ...data } = body;
     if (!id) return NextResponse.json({ error: 'ID da cotação é obrigatório.' }, { status: 400 });
 
     const currentQuotation = await prisma.quotation.findUnique({
@@ -125,23 +139,30 @@ export async function PUT(request: Request) {
 
     if (!currentQuotation) return NextResponse.json({ error: 'Cotação não encontrada.' }, { status: 404 });
 
-    if (isChosen) {
-      // Marcar apenas esta como escolhida para o item
+    const qty = quantity !== undefined ? Number(quantity) : currentQuotation.quantity;
+    const price = unitPrice !== undefined ? Number(unitPrice) : currentQuotation.unitPrice;
+    const frt = freight !== undefined ? Number(freight) : currentQuotation.freight;
+    const disc = discount !== undefined ? Number(discount) : currentQuotation.discount;
+    const tx = taxes !== undefined ? Number(taxes) : currentQuotation.taxes;
+    const finalPrice = calculateQuotationFinalPrice(qty, price, frt, disc, tx);
+    const suppId = supplierId || currentQuotation.supplierId;
+
+    const willBeChosen = isChosen !== undefined ? isChosen : currentQuotation.isChosen;
+
+    if (willBeChosen) {
       await prisma.quotation.updateMany({
         where: { budgetItemId: currentQuotation.budgetItemId },
         data: { isChosen: false },
       });
 
-      const qty = currentQuotation.quantity || 1;
-      const unitPriceComputed = qty > 0 ? currentQuotation.finalPrice / qty : currentQuotation.unitPrice;
-
+      const unitPriceComputed = qty > 0 ? finalPrice / qty : price;
       await prisma.budgetItem.update({
         where: { id: currentQuotation.budgetItemId },
         data: {
-          chosenSupplierId: currentQuotation.supplierId,
+          chosenSupplierId: suppId,
           contractedUnitPrice: unitPriceComputed,
-          contractedTotal: currentQuotation.finalPrice,
-          balance: currentQuotation.finalPrice - currentQuotation.budgetItem.paidTotal,
+          contractedTotal: finalPrice,
+          balance: Math.max(0, finalPrice - currentQuotation.budgetItem.paidTotal),
           status: 'CONTRATADO',
         },
       });
@@ -151,12 +172,75 @@ export async function PUT(request: Request) {
       where: { id },
       data: {
         ...data,
-        isChosen: isChosen !== undefined ? isChosen : currentQuotation.isChosen,
+        supplierId: suppId,
+        quantity: qty,
+        unitPrice: price,
+        freight: frt,
+        discount: disc,
+        taxes: tx,
+        finalPrice,
+        paymentTerms: paymentTerms !== undefined ? paymentTerms : currentQuotation.paymentTerms,
+        isChosen: willBeChosen,
       },
-      include: { supplier: true },
+      include: { supplier: true, budgetItem: true },
+    });
+
+    await logAuditAction({
+      action: 'UPDATE',
+      entityName: 'Quotation',
+      entityId: id,
+      previousValue: currentQuotation,
+      newValue: updated,
+      details: `Cotação ${id} atualizada.`,
     });
 
     return NextResponse.json(updated);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID da cotação é obrigatório.' }, { status: 400 });
+
+    const quotation = await prisma.quotation.findUnique({
+      where: { id },
+      include: { budgetItem: true },
+    });
+
+    if (!quotation) return NextResponse.json({ error: 'Cotação não encontrada.' }, { status: 404 });
+
+    await prisma.quotation.delete({ where: { id } });
+
+    // Se era a cotação escolhida, recalcular item de orçamento
+    if (quotation.isChosen) {
+      const remainingChosen = await prisma.quotation.findFirst({
+        where: { budgetItemId: quotation.budgetItemId, isChosen: true },
+      });
+
+      if (!remainingChosen) {
+        await prisma.budgetItem.update({
+          where: { id: quotation.budgetItemId },
+          data: {
+            chosenSupplierId: null,
+            status: 'PLANEJADO',
+          },
+        });
+      }
+    }
+
+    await logAuditAction({
+      action: 'DELETE',
+      entityName: 'Quotation',
+      entityId: id,
+      previousValue: quotation,
+      details: `Cotação ${id} excluída.`,
+    });
+
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

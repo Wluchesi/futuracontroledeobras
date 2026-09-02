@@ -25,12 +25,13 @@ export async function GET(request: Request) {
       orderBy: { dueDate: 'asc' },
     });
 
-    const now = new Date();
-
     const formatted = payables.map((item) => {
-      const computed = getAccountPayableStatus(item.dueDate, item.paymentDate);
+      const totalPaid = item.payments ? item.payments.reduce((acc, p) => acc + p.amountPaid, 0) : 0;
+      const computed = getAccountPayableStatus(item.dueDate, item.paymentDate, totalPaid, item.amount);
       return {
         ...item,
+        totalPaid,
+        balanceRemaining: Math.max(0, item.amount - totalPaid),
         status: computed.status,
         daysOverdue: computed.daysOverdue,
         statusLabel: computed.label,
@@ -89,6 +90,80 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(created, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, dueDate, amount, description, supplierId, costCenterId, documentNumber, notes } = body;
+    if (!id) return NextResponse.json({ error: 'ID é obrigatório.' }, { status: 400 });
+
+    const current = await prisma.accountPayable.findUnique({
+      where: { id },
+      include: { payments: true },
+    });
+
+    if (!current) return NextResponse.json({ error: 'Conta a pagar não encontrada.' }, { status: 404 });
+
+    const effDueDate = dueDate ? new Date(dueDate) : current.dueDate;
+    const newAmount = amount !== undefined ? Number(amount) : current.amount;
+    const totalPaid = current.payments ? current.payments.reduce((acc, p) => acc + p.amountPaid, 0) : 0;
+
+    const computed = getAccountPayableStatus(effDueDate, current.paymentDate, totalPaid, newAmount);
+
+    const updated = await prisma.accountPayable.update({
+      where: { id },
+      data: {
+        dueDate: effDueDate,
+        amount: newAmount,
+        description: description || current.description,
+        supplierId: supplierId || current.supplierId,
+        costCenterId: costCenterId || current.costCenterId,
+        documentNumber: documentNumber !== undefined ? documentNumber : current.documentNumber,
+        notes: notes !== undefined ? notes : current.notes,
+        status: computed.status,
+      },
+      include: { supplier: true, costCenter: true, payments: true },
+    });
+
+    await logAuditAction({
+      action: 'UPDATE',
+      entityName: 'AccountPayable',
+      entityId: id,
+      previousValue: current,
+      newValue: updated,
+      details: `Conta a pagar ${id} atualizada. Vencimento: ${effDueDate.toISOString().split('T')[0]}.`,
+    });
+
+    return NextResponse.json(updated);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID é obrigatório.' }, { status: 400 });
+
+    const current = await prisma.accountPayable.findUnique({ where: { id } });
+    if (!current) return NextResponse.json({ error: 'Conta não encontrada.' }, { status: 404 });
+
+    await prisma.accountPayable.delete({ where: { id } });
+
+    await logAuditAction({
+      action: 'DELETE',
+      entityName: 'AccountPayable',
+      entityId: id,
+      previousValue: current,
+      details: `Conta a pagar ${id} excluída.`,
+    });
+
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

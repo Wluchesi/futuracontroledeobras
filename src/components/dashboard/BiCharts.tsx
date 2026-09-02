@@ -29,16 +29,16 @@ interface BiChartsProps {
   };
 }
 
-const COLORS_PIE = ['#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6'];
+const COLORS_PIE = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 
 export default function BiCharts({ charts }: BiChartsProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* GRÁFICO 1: Orçado x Realizado por Centro de Custo */}
+      {/* GRÁFICO 1: Orçado Vencedor x Realizado por Centro de Custo */}
       <div className="glass-card p-5 rounded-2xl border border-slate-200 shadow-xs">
         <h3 className="font-bold text-slate-800 text-sm mb-4 flex items-center">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-600 mr-2" />
-          1. Orçado x Realizado por Centro de Custo
+          1. Orçado (Vencedor) x Realizado por Centro de Custo
         </h3>
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -48,7 +48,7 @@ export default function BiCharts({ charts }: BiChartsProps) {
               <YAxis stroke="#64748B" fontSize={11} tickFormatter={(v) => `R$${v / 1000}k`} />
               <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
               <Legend verticalAlign="top" height={36} />
-              <Bar dataKey="Orçado" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Orçado (Vencedor)" fill="#3B82F6" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Realizado" fill="#10B981" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -75,11 +75,11 @@ export default function BiCharts({ charts }: BiChartsProps) {
         </div>
       </div>
 
-      {/* GRÁFICO 3: Status das Contas (Pagas x A vencer x Vencidas) */}
+      {/* GRÁFICO 3: Status das Contas (Pagas x Parcial x A vencer x Vencidas) */}
       <div className="glass-card p-5 rounded-2xl border border-slate-200 shadow-xs">
         <h3 className="font-bold text-slate-800 text-sm mb-4 flex items-center">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2" />
-          3. Status das Contas (🟢 Pagas / 🟡 A Vencer / 🔴 Vencidas)
+          3. Status das Contas (🟢 Integral / 🔵 Parcial / 🟡 A Vencer / 🔴 Vencidas)
         </h3>
         <div className="h-72 w-full flex items-center justify-center">
           <ResponsiveContainer width="100%" height="100%">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useProject } from '@/context/ProjectContext';
-import { ShoppingCart, Plus, Search, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Plus, Search, AlertCircle, Edit3, Trash2, Zap, FileText } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/calculations';
 import { useSearchParams } from 'next/navigation';
 
@@ -22,6 +22,7 @@ function ComprasContent() {
   const [confirmWarningModal, setConfirmWarningModal] = useState<any>(null);
 
   const [formData, setFormData] = useState({
+    id: '',
     budgetItemId: defaultBudgetItem || '',
     supplierId: '',
     invoiceNumber: '',
@@ -35,6 +36,7 @@ function ComprasContent() {
     dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     notes: '',
     forceConfirm: false,
+    isDirectPurchase: false,
   });
 
   const fetchData = async () => {
@@ -90,66 +92,149 @@ function ComprasContent() {
     }
   };
 
-  const handleSavePurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditPurchase = (p: any) => {
+    setFormData({
+      id: p.id,
+      budgetItemId: p.budgetItemId || '',
+      supplierId: p.supplierId,
+      invoiceNumber: p.invoiceNumber || '',
+      description: p.description,
+      quantity: p.quantity,
+      unit: p.unit || 'un',
+      unitPrice: p.unitPrice,
+      discount: p.discount || 0,
+      freight: p.freight || 0,
+      paymentCondition: p.paymentCondition || '30 dias',
+      dueDate: p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      notes: p.notes || '',
+      forceConfirm: false,
+      isDirectPurchase: false,
+    });
+    setShowModal(true);
+  };
+
+  const handleDeletePurchase = async (purchaseId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta compra? O valor será estornado do orçamento e a conta a pagar será removida.')) return;
     try {
-      const res = await fetch('/api/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const json = await res.json();
-
-      if (res.status === 409 && json.requiresConfirmation) {
-        setConfirmWarningModal(json);
-        return;
+      const res = await fetch(`/api/purchases?id=${purchaseId}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert('Erro ao excluir compra.');
       }
-
-      if (!res.ok) {
-        alert(json.error || 'Erro ao registrar compra.');
-        return;
-      }
-
-      setShowModal(false);
-      setConfirmWarningModal(null);
-      fetchData();
     } catch (e) {
       console.error(e);
     }
   };
 
-  const filteredPurchases = purchases.filter((p) => {
-    return (
+  const handleSavePurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const method = formData.id ? 'PUT' : 'POST';
+      const res = await fetch('/api/purchases', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (res.status === 409 && data.requiresConfirmation) {
+        setConfirmWarningModal(data);
+        return;
+      }
+
+      if (res.ok) {
+        setShowModal(false);
+        setConfirmWarningModal(null);
+        fetchData();
+      } else {
+        alert(data.error || 'Erro ao salvar compra.');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const filteredPurchases = purchases.filter(
+    (p) =>
       p.purchaseNumber.toLowerCase().includes(search.toLowerCase()) ||
       p.description.toLowerCase().includes(search.toLowerCase()) ||
-      p.supplier.corporateName.toLowerCase().includes(search.toLowerCase()) ||
-      (p.invoiceNumber && p.invoiceNumber.toLowerCase().includes(search.toLowerCase()))
-    );
-  });
+      (p.invoiceNumber && p.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
+      p.supplier?.corporateName.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center">
             <ShoppingCart className="w-6 h-6 text-emerald-600 mr-2.5" />
-            Módulo de Compras & Lançamentos
+            Gestão de Compras Efetivadas
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Lançamento único integrado ao orçamento, fornecedores e geração automática de contas a pagar
+            Registre compras do orçamento ou compras diretas sem cotação prévia
           </p>
         </div>
-        <button
-          onClick={() => {
-            setShowModal(true);
-          }}
-          className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-xs transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Registrar Nova Compra</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Botão Compra Direta */}
+          <button
+            onClick={() => {
+              setFormData({
+                id: '',
+                budgetItemId: budgetItems[0]?.id || '',
+                supplierId: suppliers[0]?.id || '',
+                invoiceNumber: '',
+                description: 'Compra Direta (Pequenos Materiais)',
+                quantity: 1,
+                unit: 'un',
+                unitPrice: 0,
+                discount: 0,
+                freight: 0,
+                paymentCondition: 'À vista',
+                dueDate: new Date().toISOString().split('T')[0],
+                notes: 'Compra Direta efetuada sem necessidade de 3 orçamentos.',
+                forceConfirm: false,
+                isDirectPurchase: true,
+              });
+              setShowModal(true);
+            }}
+            className="flex items-center justify-center space-x-1.5 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded-xl shadow-xs transition"
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span>+ Compra Direta</span>
+          </button>
+
+          {/* Botão Compra Orçamento */}
+          <button
+            onClick={() => {
+              const first = budgetItems[0];
+              setFormData({
+                id: '',
+                budgetItemId: first?.id || '',
+                supplierId: first?.chosenSupplierId || suppliers[0]?.id || '',
+                invoiceNumber: '',
+                description: first?.itemName || '',
+                quantity: first?.quantity || 1,
+                unit: first?.unit || 'un',
+                unitPrice: first?.contractedUnitPrice || 0,
+                discount: 0,
+                freight: 0,
+                paymentCondition: '30 dias',
+                dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+                notes: '',
+                forceConfirm: false,
+                isDirectPurchase: false,
+              });
+              setShowModal(true);
+            }}
+            className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-xs transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nova Compra Orçada</span>
+          </button>
+        </div>
       </div>
 
       {/* Busca */}
@@ -158,7 +243,7 @@ function ComprasContent() {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por número da compra, descrição, fornecedor ou nota fiscal..."
+            placeholder="Buscar por código (COMP-0001), nota fiscal, item ou fornecedor..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden"
@@ -172,32 +257,54 @@ function ComprasContent() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                <th className="py-3 px-4">N° Compra</th>
-                <th className="py-3 px-4">Data</th>
-                <th className="py-3 px-4">Item do Orçamento</th>
-                <th className="py-3 px-4">Fornecedor</th>
-                <th className="py-3 px-4">NF / Recibo</th>
-                <th className="py-3 px-4 text-center">Qtd / Un</th>
-                <th className="py-3 px-4 text-right">Valor Total</th>
-                <th className="py-3 px-4 text-center">Vencimento</th>
+                <th className="py-3 px-3">Código</th>
+                <th className="py-3 px-3">Data</th>
+                <th className="py-3 px-3">NF / Recibo</th>
+                <th className="py-3 px-3">Descrição da Compra</th>
+                <th className="py-3 px-3">Fornecedor</th>
+                <th className="py-3 px-3">Centro de Custo</th>
+                <th className="py-3 px-3 text-center">Qtd / Un</th>
+                <th className="py-3 px-3 text-right">Valor Total</th>
+                <th className="py-3 px-3 text-center">Vencimento</th>
+                <th className="py-3 px-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
               {filteredPurchases.map((p) => (
                 <tr key={p.id} className="table-row-hover">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900">{p.purchaseNumber}</td>
-                  <td className="py-3 px-4 text-slate-500">{formatDate(p.date)}</td>
-                  <td className="py-3 px-4 font-medium text-slate-900">
-                    <div>{p.description}</div>
-                    <span className="text-[10px] text-slate-400">{p.costCenter?.name}</span>
+                  <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{p.purchaseNumber}</td>
+                  <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{formatDate(p.date)}</td>
+                  <td className="py-3 px-3 font-mono text-slate-600">{p.invoiceNumber || '-'}</td>
+                  <td className="py-3 px-3 font-medium text-slate-900 max-w-xs">{p.description}</td>
+                  <td className="py-3 px-3 font-semibold text-slate-700">
+                    {p.supplier?.tradeName || p.supplier?.corporateName}
                   </td>
-                  <td className="py-3 px-4 text-slate-800 font-semibold">{p.supplier.tradeName || p.supplier.corporateName}</td>
-                  <td className="py-3 px-4 font-mono text-slate-600">{p.invoiceNumber || '-'}</td>
-                  <td className="py-3 px-4 text-center">
+                  <td className="py-3 px-3 text-slate-600 font-semibold">{p.costCenter?.code}</td>
+                  <td className="py-3 px-3 text-center whitespace-nowrap">
                     {p.quantity} {p.unit}
                   </td>
-                  <td className="py-3 px-4 text-right font-bold text-emerald-700">{formatCurrency(p.totalAmount)}</td>
-                  <td className="py-3 px-4 text-center font-medium text-slate-600">{formatDate(p.dueDate)}</td>
+                  <td className="py-3 px-3 text-right font-extrabold text-emerald-700 whitespace-nowrap">
+                    {formatCurrency(p.totalAmount)}
+                  </td>
+                  <td className="py-3 px-3 text-center whitespace-nowrap">{formatDate(p.dueDate)}</td>
+                  <td className="py-3 px-3 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end space-x-1">
+                      <button
+                        onClick={() => handleEditPurchase(p)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                        title="Editar Compra"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePurchase(p.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition"
+                        title="Excluir Compra"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -205,28 +312,48 @@ function ComprasContent() {
         </div>
       </div>
 
-      {/* Modal Registrar Compra */}
+      {/* Modal Formulário de Compra */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h2 className="text-lg font-bold text-slate-900">Lançamento de Compra (Lançamento Único)</h2>
-              <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
-                Auto-Vinculado
-              </span>
-            </div>
-
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center">
+              {formData.isDirectPurchase ? (
+                <>
+                  <Zap className="w-5 h-5 text-amber-500 mr-2" />
+                  <span>Nova Compra Direta (Pequenos Valores)</span>
+                </>
+              ) : formData.id ? (
+                'Editar Compra Efetivada'
+              ) : (
+                'Efetivar Compra do Orçamento'
+              )}
+            </h2>
             <form onSubmit={handleSavePurchase} className="space-y-3 text-xs">
               <div>
-                <label className="font-semibold block mb-1">Item do Orçamento Executivo (Origem)</label>
+                <label className="font-semibold block mb-1">Item do Orçamento Vinculado</label>
                 <select
                   value={formData.budgetItemId}
                   onChange={(e) => handleBudgetItemChange(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl bg-emerald-50/40 border-emerald-300 font-semibold"
+                  className="w-full p-2.5 border rounded-xl font-semibold"
                 >
                   {budgetItems.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.code} — {b.itemName} (Saldo: {formatCurrency(b.balance)})
+                      {b.code} — {b.itemName} (Orçado: {formatCurrency(b.contractedTotal)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold block mb-1">Fornecedor</label>
+                <select
+                  value={formData.supplierId}
+                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                  className="w-full p-2.5 border rounded-xl font-semibold"
+                >
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.tradeName || s.corporateName} ({s.supplierType})
                     </option>
                   ))}
                 </select>
@@ -234,47 +361,33 @@ function ComprasContent() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-semibold block mb-1">Fornecedor</label>
-                  <select
-                    value={formData.supplierId}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                  <label className="font-semibold block mb-1">Descrição da Compra</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full p-2.5 border rounded-xl"
-                  >
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.tradeName || s.corporateName}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
                 <div>
-                  <label className="font-semibold block mb-1">NF / Recibo Documento</label>
+                  <label className="font-semibold block mb-1">Nota Fiscal / Recibo</label>
                   <input
                     type="text"
                     value={formData.invoiceNumber}
                     onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl"
-                    placeholder="NF-12345"
+                    className="w-full p-2.5 border rounded-xl font-mono"
+                    placeholder="NF-e 12345"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="font-semibold block mb-1">Descrição do Lançamento</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
-
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="font-semibold block mb-1">Qtd</label>
                   <input
                     type="number"
+                    step="0.01"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
                     className="w-full p-2.5 border rounded-xl"
@@ -290,15 +403,18 @@ function ComprasContent() {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold block mb-1">Valor Unit. (R$)</label>
+                  <label className="font-semibold block mb-1">Preço Unit. (R$)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.unitPrice}
                     onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl"
+                    className="w-full p-2.5 border rounded-xl font-bold"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-semibold block mb-1">Desconto (R$)</label>
                   <input
@@ -309,9 +425,29 @@ function ComprasContent() {
                     className="w-full p-2.5 border rounded-xl"
                   />
                 </div>
+                <div>
+                  <label className="font-semibold block mb-1">Frete (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.freight}
+                    onChange={(e) => setFormData({ ...formData, freight: Number(e.target.value) })}
+                    className="w-full p-2.5 border rounded-xl"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-semibold block mb-1">Condição Pagamento</label>
+                  <input
+                    type="text"
+                    value={formData.paymentCondition}
+                    onChange={(e) => setFormData({ ...formData, paymentCondition: e.target.value })}
+                    className="w-full p-2.5 border rounded-xl"
+                    placeholder="30 dias / À vista"
+                  />
+                </div>
                 <div>
                   <label className="font-semibold block mb-1">Data de Vencimento</label>
                   <input
@@ -319,26 +455,9 @@ function ComprasContent() {
                     required
                     value={formData.dueDate}
                     onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl"
+                    className="w-full p-2.5 border rounded-xl font-semibold"
                   />
                 </div>
-                <div>
-                  <label className="font-semibold block mb-1">Condição de Pagamento</label>
-                  <input
-                    type="text"
-                    value={formData.paymentCondition}
-                    onChange={(e) => setFormData({ ...formData, paymentCondition: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl"
-                    placeholder="30 dias / PIX"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-100 rounded-xl flex items-center justify-between text-xs font-bold text-slate-800">
-                <span>Valor Total da Compra:</span>
-                <span className="text-sm text-emerald-700 font-extrabold">
-                  {formatCurrency(Math.max(0, formData.quantity * formData.unitPrice - formData.discount + formData.freight))}
-                </span>
               </div>
 
               <div className="flex justify-end space-x-2 pt-3">
@@ -350,7 +469,7 @@ function ComprasContent() {
                   Cancelar
                 </button>
                 <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">
-                  Efetivar Compra
+                  {formData.id ? 'Atualizar Compra' : 'Salvar e Gerar a Pagar'}
                 </button>
               </div>
             </form>
@@ -358,33 +477,41 @@ function ComprasContent() {
         </div>
       )}
 
-      {/* Modal Confirmação de Extrapolação */}
+      {/* Modal de Alerta de Extrapolação do Orçamento */}
       {confirmWarningModal && (
         <div className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border-2 border-amber-400">
-            <div className="flex items-center space-x-3 text-amber-600">
-              <AlertCircle className="w-8 h-8 flex-shrink-0" />
-              <h3 className="font-extrabold text-base text-slate-900">Aviso de Extrapolação do Orçamento!</h3>
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center space-x-2 text-amber-600">
+              <AlertCircle className="w-6 h-6" />
+              <h2 className="text-base font-bold">Estouro de Orçamento Detectado</h2>
             </div>
             <p className="text-xs text-slate-600">{confirmWarningModal.warning}</p>
-            <div className="bg-amber-50 p-3 rounded-xl text-xs space-y-1 text-amber-900">
-              <div>Orçamento Contratado: <strong>{formatCurrency(confirmWarningModal.budget)}</strong></div>
-              <div>Realizado Anterior: <strong>{formatCurrency(confirmWarningModal.purchased)}</strong></div>
-              <div>Esta Compra: <strong>{formatCurrency(confirmWarningModal.currentPurchase)}</strong></div>
-              <div className="text-rose-700 font-bold">Excedente Orçamentário: {formatCurrency(confirmWarningModal.excessAmount)}</div>
+            <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs space-y-1">
+              <div>Orçamento Contratado: {formatCurrency(confirmWarningModal.budget)}</div>
+              <div>Realizado Atual: {formatCurrency(confirmWarningModal.purchased)}</div>
+              <div>Esta Compra: {formatCurrency(confirmWarningModal.currentPurchase)}</div>
+              <div className="font-bold text-rose-700">
+                Valor Excedido: {formatCurrency(confirmWarningModal.excessAmount)}
+              </div>
             </div>
             <div className="flex justify-end space-x-2 pt-2">
-              <button onClick={() => setConfirmWarningModal(null)} className="px-4 py-2 border rounded-xl text-slate-600">
-                Cancelar Compra
+              <button
+                onClick={() => setConfirmWarningModal(null)}
+                className="px-4 py-2 border rounded-xl text-slate-600 text-xs"
+              >
+                Cancelar
               </button>
               <button
-                onClick={async () => {
-                  setFormData({ ...formData, forceConfirm: true });
-                  setConfirmWarningModal(null);
+                onClick={() => {
+                  setFormData((prev) => ({ ...prev, forceConfirm: true }));
+                  setTimeout(() => {
+                    const btn = document.querySelector('form button[type="submit"]') as HTMLButtonElement;
+                    if (btn) btn.click();
+                  }, 100);
                 }}
-                className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold"
+                className="px-4 py-2 bg-amber-600 text-white text-xs rounded-xl font-bold"
               >
-                Confirmar Assim Mesmo
+                Confirmar Compra Mesmo Assim
               </button>
             </div>
           </div>

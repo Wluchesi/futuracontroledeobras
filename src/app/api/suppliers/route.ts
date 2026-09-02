@@ -94,3 +94,47 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID do fornecedor é obrigatório.' }, { status: 400 });
+
+    const supplier = await prisma.supplier.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { quotations: true, purchases: true, accountsPayable: true },
+        },
+      },
+    });
+
+    if (!supplier) return NextResponse.json({ error: 'Fornecedor não encontrado.' }, { status: 404 });
+
+    const totalDeps = supplier._count.quotations + supplier._count.purchases + supplier._count.accountsPayable;
+
+    if (totalDeps > 0) {
+      return NextResponse.json(
+        {
+          error: `Não é possível excluir este fornecedor porque ele possui registros vinculados (${supplier._count.purchases} compras, ${supplier._count.quotations} cotações e ${supplier._count.accountsPayable} contas a pagar).`,
+        },
+        { status: 400 }
+      );
+    }
+
+    await prisma.supplier.delete({ where: { id } });
+
+    await logAuditAction({
+      action: 'DELETE',
+      entityName: 'Supplier',
+      entityId: id,
+      previousValue: supplier,
+      details: `Fornecedor ${supplier.corporateName} excluído.`,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

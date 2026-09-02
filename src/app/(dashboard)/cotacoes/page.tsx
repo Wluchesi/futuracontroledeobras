@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
-import { FileSpreadsheet, Plus, CheckCircle, TrendingDown, Award } from 'lucide-react';
+import { FileSpreadsheet, Plus, CheckCircle, TrendingDown, Award, Edit3, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 
 export default function CotacoesPage() {
@@ -14,6 +14,7 @@ export default function CotacoesPage() {
   const [showModal, setShowModal] = useState(false);
 
   const [formData, setFormData] = useState({
+    id: '',
     budgetItemId: '',
     supplierId: '',
     quantity: 1,
@@ -67,11 +68,44 @@ export default function CotacoesPage() {
     }
   };
 
+  const handleDeleteQuotation = async (quotationId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta cotação?')) return;
+    try {
+      const res = await fetch(`/api/quotations?id=${quotationId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleEditQuotation = (q: any) => {
+    setFormData({
+      id: q.id,
+      budgetItemId: q.budgetItemId,
+      supplierId: q.supplierId,
+      quantity: q.quantity,
+      unitPrice: q.unitPrice,
+      freight: q.freight,
+      discount: q.discount,
+      taxes: q.taxes,
+      deliveryDays: q.deliveryDays,
+      paymentTerms: q.paymentTerms || '30 dias',
+      notes: q.notes || '',
+      isChosen: q.isChosen,
+    });
+    setShowModal(true);
+  };
+
   const handleSaveQuotation = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const method = formData.id ? 'PUT' : 'POST';
       const res = await fetch('/api/quotations', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -88,7 +122,7 @@ export default function CotacoesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -97,12 +131,13 @@ export default function CotacoesPage() {
             Matriz de Cotações & Comparação de Fornecedores
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Compare até 3 propostas por item e escolha a opção de melhor custo-benefício com cálculo de economia instantâneo
+            Compare propostas por item, edite condições de pagamento e escolha a vencedora
           </p>
         </div>
         <button
           onClick={() => {
             setFormData({
+              id: '',
               budgetItemId: budgetItems[0]?.id || '',
               supplierId: suppliers[0]?.id || '',
               quantity: budgetItems[0]?.quantity || 1,
@@ -183,6 +218,7 @@ export default function CotacoesPage() {
                         key={index}
                         onClick={() => {
                           setFormData({
+                            id: '',
                             budgetItemId: item.id,
                             supplierId: suppliers[0]?.id || '',
                             quantity: item.quantity,
@@ -221,6 +257,7 @@ export default function CotacoesPage() {
                           : 'bg-slate-50/80 border-slate-200'
                       }`}
                     >
+                      {/* Badge Vencedora ou Menor Preço */}
                       {isChosen && (
                         <span className="absolute -top-3 left-4 bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs flex items-center">
                           <Award className="w-3 h-3 mr-1" /> Vencedora Escolhida
@@ -233,7 +270,25 @@ export default function CotacoesPage() {
                         </span>
                       )}
 
-                      <div className="font-bold text-slate-900 text-sm mt-1">
+                      {/* Botões de Ação: Editar e Excluir */}
+                      <div className="absolute top-3 right-3 flex items-center space-x-1">
+                        <button
+                          onClick={() => handleEditQuotation(q)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition"
+                          title="Editar Cotação"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQuotation(q.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition"
+                          title="Excluir Cotação"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="font-bold text-slate-900 text-sm mt-2 pr-12">
                         {q.supplier.tradeName || q.supplier.corporateName}
                       </div>
                       <span className="text-[11px] text-slate-500 block mb-2">{q.supplier.supplierType}</span>
@@ -257,9 +312,9 @@ export default function CotacoesPage() {
                         </div>
                       </div>
 
-                      <div className="text-[11px] text-slate-500 space-y-0.5 mb-3">
-                        <div>Prazo: {q.deliveryDays} dias úteis</div>
-                        <div>Condição: {q.paymentTerms || 'A combinar'}</div>
+                      <div className="text-[11px] text-slate-600 space-y-1 mb-3 bg-white/60 p-2 rounded-xl border border-slate-200/60">
+                        <div>⏱️ Prazo: <strong>{q.deliveryDays} dias úteis</strong></div>
+                        <div>💳 Condição: <strong className="text-emerald-700">{q.paymentTerms || 'A combinar'}</strong></div>
                       </div>
 
                       {!isChosen && (
@@ -280,11 +335,13 @@ export default function CotacoesPage() {
         })}
       </div>
 
-      {/* Modal Nova Cotação */}
+      {/* Modal Nova / Editar Cotação */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Cadastrar Cotação de Fornecedor</h2>
+            <h2 className="text-lg font-bold text-slate-900">
+              {formData.id ? 'Editar Cotação' : 'Cadastrar Cotação de Fornecedor'}
+            </h2>
             <form onSubmit={handleSaveQuotation} className="space-y-3 text-xs">
               <div>
                 <label className="font-semibold block mb-1">Item do Orçamento</label>
@@ -341,7 +398,7 @@ export default function CotacoesPage() {
                     step="0.01"
                     value={formData.unitPrice}
                     onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl"
+                    className="w-full p-2.5 border rounded-xl font-bold"
                   />
                 </div>
                 <div>
@@ -381,7 +438,7 @@ export default function CotacoesPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-semibold block mb-1">Prazo de Entrega (dias)</label>
+                  <label className="font-semibold block mb-1">Prazo Entrega (dias)</label>
                   <input
                     type="number"
                     value={formData.deliveryDays}
@@ -390,18 +447,29 @@ export default function CotacoesPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold block mb-1">Condição Pagamento</label>
+                  <label className="font-semibold block mb-1">Condição de Pagamento</label>
                   <input
                     type="text"
+                    required
                     value={formData.paymentTerms}
                     onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl"
-                    placeholder="30 dias / À vista / 28d"
+                    className="w-full p-2.5 border rounded-xl font-semibold"
+                    placeholder="ex: À vista / 30 dias / 50% entrada"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 pt-2">
+              <div>
+                <label className="font-semibold block mb-1">Observações</label>
+                <textarea
+                  rows={2}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full p-2 border rounded-xl text-slate-600"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
                 <input
                   type="checkbox"
                   id="isChosenModal"
@@ -423,7 +491,7 @@ export default function CotacoesPage() {
                   Cancelar
                 </button>
                 <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">
-                  Salvar Cotação
+                  {formData.id ? 'Atualizar Cotação' : 'Salvar Cotação'}
                 </button>
               </div>
             </form>

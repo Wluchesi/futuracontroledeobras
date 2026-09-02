@@ -9,12 +9,14 @@ export async function GET(request: Request) {
 
     const whereProject = projectId ? { projectId } : {};
 
-    // 1. Obter Itens do Orçamento
+    // 1. Obter Itens do Orçamento com cotações
     const budgetItems = await prisma.budgetItem.findMany({
       where: whereProject,
       include: {
         costCenter: true,
-        quotations: true,
+        quotations: {
+          include: { supplier: true },
+        },
       },
     });
 
@@ -24,6 +26,7 @@ export async function GET(request: Request) {
       include: {
         supplier: true,
         costCenter: true,
+        payments: true,
       },
     });
 
@@ -37,28 +40,51 @@ export async function GET(request: Request) {
     });
 
     // --- CÁLCULO DOS CARDS KPI DE TOPO ---
-    let totalContracted = 0;
+    let totalContracted = 0; // Orçado Vencedor / Contratado
     let totalPurchased = 0;
     let totalPaid = 0;
     let quotationSavings = 0;
 
-    budgetItems.forEach((item) => {
-      totalContracted += item.contractedTotal || 0;
-      totalPurchased += item.purchasedTotal || 0;
-      totalPaid += item.paidTotal || 0;
+    const costCenterTotals: Record<string, { name: string; code: string; contracted: number; purchased: number }> = {};
 
-      const prices = item.quotations.map((q) => q.finalPrice);
-      if (prices.length > 1) {
-        const highest = Math.max(...prices);
-        const chosen = item.quotations.find((q) => q.isChosen) || item.quotations[0];
-        if (chosen && highest > chosen.finalPrice) {
-          quotationSavings += highest - chosen.finalPrice;
-        }
+    budgetItems.forEach((item) => {
+      // Calcular valor do Orçamento Vencedor (Cotação escolhida ou menor cotação ou valor contratado)
+      const chosenQuot = item.quotations.find((q) => q.isChosen);
+      const quotationsPrices = item.quotations.map((q) => q.finalPrice);
+      const lowestQuotPrice = quotationsPrices.length > 0 ? Math.min(...quotationsPrices) : 0;
+      const highestQuotPrice = quotationsPrices.length > 0 ? Math.max(...quotationsPrices) : 0;
+
+      // Orçado Vencedor considerado
+      const winnerBudget = chosenQuot
+        ? chosenQuot.finalPrice
+        : lowestQuotPrice > 0
+        ? lowestQuotPrice
+        : item.contractedTotal || 0;
+
+      totalContracted += winnerBudget;
+      totalPurchased += item.purchasedTotal || 0;
+
+      if (highestQuotPrice > 0 && winnerBudget > 0 && highestQuotPrice > winnerBudget) {
+        quotationSavings += highestQuotPrice - winnerBudget;
       }
+
+      // Agrupamento por Centro de Custo
+      const ccCode = item.costCenter.code;
+      if (!costCenterTotals[ccCode]) {
+        costCenterTotals[ccCode] = {
+          code: ccCode,
+          name: item.costCenter.name,
+          contracted: 0,
+          purchased: 0,
+        };
+      }
+      costCenterTotals[ccCode].contracted += winnerBudget;
+      costCenterTotals[ccCode].purchased += item.purchasedTotal;
     });
 
     let openAmount = 0; // A vencer
     let overdueAmount = 0; // Vencido
+    let partialAmount = 0; // Pago Parcial
     let countOverdue = 0;
     let countDueSoon = 0;
     let dueSoonAmount = 0;
@@ -68,19 +94,24 @@ export async function GET(request: Request) {
     const sevenDaysFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     accountsPayable.forEach((acc) => {
-      const statusInfo = getAccountPayableStatus(acc.dueDate, acc.paymentDate);
+      const itemPaid = acc.payments ? acc.payments.reduce((sum, p) => sum + p.amountPaid, 0) : 0;
+      totalPaid += itemPaid;
+
+      const statusInfo = getAccountPayableStatus(acc.dueDate, acc.paymentDate, itemPaid, acc.amount);
 
       if (statusInfo.status === 'PAGO') {
         // Já contabilizado
+      } else if (statusInfo.status === 'PAGO_PARCIAL') {
+        partialAmount += Math.max(0, acc.amount - itemPaid);
       } else if (statusInfo.status === 'VENCIDO') {
-        overdueAmount += acc.amount;
+        overdueAmount += acc.amount - itemPaid;
         countOverdue++;
       } else if (statusInfo.status === 'A_VENCER') {
-        openAmount += acc.amount;
+        openAmount += acc.amount - itemPaid;
         const due = new Date(acc.dueDate);
         if (due <= sevenDaysFromNow) {
           countDueSoon++;
-          dueSoonAmount += acc.amount;
+          dueSoonAmount += acc.amount - itemPaid;
         }
       }
     });
@@ -107,22 +138,6 @@ export async function GET(request: Request) {
       });
     }
 
-    // Centros de custo estourados
-    const costCenterTotals: Record<string, { name: string; code: string; contracted: number; purchased: number }> = {};
-    budgetItems.forEach((item) => {
-      const ccCode = item.costCenter.code;
-      if (!costCenterTotals[ccCode]) {
-        costCenterTotals[ccCode] = {
-          code: ccCode,
-          name: item.costCenter.name,
-          contracted: 0,
-          purchased: 0,
-        };
-      }
-      costCenterTotals[ccCode].contracted += item.contractedTotal;
-      costCenterTotals[ccCode].purchased += item.purchasedTotal;
-    });
-
     Object.values(costCenterTotals).forEach((cc) => {
       if (cc.purchased > cc.contracted && cc.contracted > 0) {
         const excess = cc.purchased - cc.contracted;
@@ -137,20 +152,20 @@ export async function GET(request: Request) {
     if (quotationSavings > 0) {
       alerts.push({
         type: 'success',
-        title: `🟢 Economia obtida em cotações`,
-        message: `Você economizou R$ ${quotationSavings.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} comparando 3 fornecedores nas cotações!`,
+        title: `🟢 Economia obtida com orçamentos vencedores`,
+        message: `Você economizou R$ ${quotationSavings.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} escolhendo a cotação vencedora nas concorrências!`,
       });
     }
 
     // --- DADOS PARA OS 6 GRÁFICOS BI ---
 
-    // Gráfico 1: Orçado x Contratado x Realizado por Centro de Custo
+    // Gráfico 1: Orçado (Vencedor) x Realizado por Centro de Custo
     const chart1Data = Object.values(costCenterTotals)
       .slice(0, 10)
       .map((cc) => ({
         code: cc.code,
         name: cc.name.split('—')[1]?.trim() || cc.name,
-        Orçado: cc.contracted,
+        'Orçado (Vencedor)': cc.contracted,
         Realizado: cc.purchased,
       }));
 
@@ -166,17 +181,21 @@ export async function GET(request: Request) {
       Gastos: monthlyGastos[m],
     }));
 
-    // Gráfico 3: Contas (Pagas x A vencer x Vencidas)
+    // Gráfico 3: Status das Contas (Pagas x Parcial x A vencer x Vencidas)
     let paidCount = 0;
+    let partialCount = 0;
     accountsPayable.forEach((acc) => {
-      const st = getAccountPayableStatus(acc.dueDate, acc.paymentDate).status;
+      const itemPaid = acc.payments ? acc.payments.reduce((sum, p) => sum + p.amountPaid, 0) : 0;
+      const st = getAccountPayableStatus(acc.dueDate, acc.paymentDate, itemPaid, acc.amount).status;
       if (st === 'PAGO') paidCount++;
+      if (st === 'PAGO_PARCIAL') partialCount++;
     });
 
     const chart3Data = [
-      { name: 'Pagas', value: paidCount, color: '#10B981' }, // 🟢 Verde
-      { name: 'A Vencer', value: accountsPayable.length - paidCount - countOverdue, color: '#F59E0B' }, // 🟡 Amarelo
-      { name: 'Vencidas', value: countOverdue, color: '#EF4444' }, // 🔴 Vermelho
+      { name: 'Pagas Integral', value: paidCount, color: '#10B981' },
+      { name: 'Pagas Parcial', value: partialCount, color: '#3B82F6' },
+      { name: 'A Vencer', value: Math.max(0, accountsPayable.length - paidCount - partialCount - countOverdue), color: '#F59E0B' },
+      { name: 'Vencidas', value: countOverdue, color: '#EF4444' },
     ];
 
     // Gráfico 4: Distribuição dos Gastos por Centro de Custo
@@ -198,7 +217,7 @@ export async function GET(request: Request) {
     // Gráfico 6: Top 10 Fornecedores por Volume Comprado
     const supplierVolumes: Record<string, { name: string; total: number }> = {};
     purchases.forEach((p) => {
-      const sName = p.supplier.tradeName || p.supplier.corporateName;
+      const sName = p.supplier?.tradeName || p.supplier?.corporateName || 'Fornecedor';
       if (!supplierVolumes[sName]) supplierVolumes[sName] = { name: sName, total: 0 };
       supplierVolumes[sName].total += p.totalAmount;
     });
