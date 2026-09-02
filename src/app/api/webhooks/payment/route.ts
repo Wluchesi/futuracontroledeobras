@@ -51,6 +51,10 @@ export async function POST(request: Request) {
         formattedPlanName = 'Kitneteiro Premium (5 Obras / SINAPI / IA)';
         maxProjects = 5;
         maxUsers = 50;
+      } else if (planId === 'Teste1Real') {
+        formattedPlanName = 'Kitneteiro Premium (Teste R$ 1,00)';
+        maxProjects = 5;
+        maxUsers = 50;
       } else if (planId === 'Gratuito') {
         formattedPlanName = 'Plano Gratuito (1 Obra / 4 Kitnets)';
         maxProjects = 1;

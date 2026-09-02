@@ -37,6 +37,9 @@ export async function POST(request: Request) {
     } else if (planId === 'Gratuito') {
       planPrice = 0;
       planTitle = 'Plano Gratuito';
+    } else if (planId === 'Teste1Real') {
+      planPrice = 1;
+      planTitle = 'Plano Teste PIX/Cartão (R$ 1,00)';
     }
 
     const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
@@ -228,6 +231,10 @@ export async function POST(request: Request) {
 
       if (planId === 'Premium') {
         formattedPlanName = 'Kitneteiro Premium (5 Obras / SINAPI / IA)';
+        maxProjects = 5;
+        maxUsers = 50;
+      } else if (planId === 'Teste1Real') {
+        formattedPlanName = 'Kitneteiro Premium (Teste R$ 1,00)';
         maxProjects = 5;
         maxUsers = 50;
       }
