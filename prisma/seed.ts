@@ -36,6 +36,7 @@ async function main() {
   console.log('🌱 Iniciando Seed do Banco de Dados...');
 
   // 1. Limpar dados anteriores
+  await prisma.sinapiItem.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.accountPayable.deleteMany();
@@ -528,6 +529,211 @@ async function main() {
       details: 'Obra inicial cadastrada com massa demonstrativa completa.',
     },
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  // SINAPI — Tabela de Insumos de Referência da Construção Civil
+  // ═══════════════════════════════════════════════════════════════
+  console.log('📊 Inserindo base de insumos SINAPI...');
+
+  // Insumos base com preços medianos de referência (base MG 08/2024)
+  const SINAPI_INSUMOS_BASE = [
+    // ── FUNDAÇÕES ──
+    { codigoSinapi: '00000370', descricao: 'CONCRETO USINADO BOMBEAVEL, CLASSE DE RESISTENCIA C25, COM BRITA 0 E 1, SLUMP = 100 +/- 20 MM', unidade: 'M3', precoMediano: 485.50, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00000371', descricao: 'CONCRETO USINADO BOMBEAVEL, CLASSE DE RESISTENCIA C30, COM BRITA 0 E 1, SLUMP = 100 +/- 20 MM', unidade: 'M3', precoMediano: 520.80, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00004345', descricao: 'ACO CA-50, 6,3 MM, VERGALHAO', unidade: 'KG', precoMediano: 7.85, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00004346', descricao: 'ACO CA-50, 8,0 MM, VERGALHAO', unidade: 'KG', precoMediano: 7.62, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00004347', descricao: 'ACO CA-50, 10,0 MM, VERGALHAO', unidade: 'KG', precoMediano: 7.55, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00004348', descricao: 'ACO CA-50, 12,5 MM, VERGALHAO', unidade: 'KG', precoMediano: 7.48, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00004350', descricao: 'ACO CA-60, 4,2 MM, VERGALHAO', unidade: 'KG', precoMediano: 9.12, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00004351', descricao: 'ACO CA-60, 5,0 MM, VERGALHAO', unidade: 'KG', precoMediano: 8.75, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00011001', descricao: 'ARAME RECOZIDO 18 BWG, 1,25 MM (0,01 KG/M)', unidade: 'KG', precoMediano: 12.40, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00005061', descricao: 'FORMA DE MADEIRA PARA FUNDACAO, COM TABUA DE PINUS', unidade: 'M2', precoMediano: 58.90, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00003777', descricao: 'BRITA 1 - PEDRA BRITADA N.1 (9,5 A 19 MM) POSTO PEDREIRA/FORNECEDOR', unidade: 'M3', precoMediano: 89.50, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00003776', descricao: 'BRITA 0 - PEDRISCO (4,8 A 9,5 MM) POSTO PEDREIRA/FORNECEDOR', unidade: 'M3', precoMediano: 82.30, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00000367', descricao: 'AREIA MEDIA - POSTO JAZIDA/FORNECEDOR (RETIRADO NA JAZIDA, SEM TRANSPORTE)', unidade: 'M3', precoMediano: 75.60, categoria: 'MATERIAL', grupo: 'Fundações' },
+    { codigoSinapi: '00001379', descricao: 'CIMENTO PORTLAND COMPOSTO CP II-32', unidade: 'KG', precoMediano: 0.72, categoria: 'MATERIAL', grupo: 'Fundações' },
+
+    // ── ALVENARIA ──
+    { codigoSinapi: '00003384', descricao: 'TIJOLO CERAMICO MACICO COMUM 5 X 10 X 20 CM', unidade: 'UN', precoMediano: 0.68, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+    { codigoSinapi: '00003382', descricao: 'BLOCO CERAMICO (TIJOLO FURADO) DE 9 X 19 X 19 CM', unidade: 'UN', precoMediano: 0.85, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+    { codigoSinapi: '00003383', descricao: 'BLOCO CERAMICO (TIJOLO FURADO) DE 14 X 19 X 29 CM', unidade: 'UN', precoMediano: 1.45, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+    { codigoSinapi: '00010567', descricao: 'BLOCO DE CONCRETO ESTRUTURAL 14 X 19 X 39 CM, CLASSE A (NBR 6136)', unidade: 'UN', precoMediano: 4.25, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+    { codigoSinapi: '00010568', descricao: 'BLOCO DE CONCRETO VEDACAO 14 X 19 X 39 CM, CLASSE C (NBR 6136)', unidade: 'UN', precoMediano: 3.10, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+    { codigoSinapi: '00001106', descricao: 'ARGAMASSA INDUSTRIALIZADA PARA ASSENTAMENTO DE ALVENARIA', unidade: 'KG', precoMediano: 0.58, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+    { codigoSinapi: '00001100', descricao: 'CAL HIDRATADA CH-I PARA ARGAMASSAS', unidade: 'KG', precoMediano: 0.82, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+    { codigoSinapi: '00003385', descricao: 'VERGA PRE-MOLDADA CONCRETO PARA PORTAS/JANELAS, L=1,20 M', unidade: 'UN', precoMediano: 22.50, categoria: 'MATERIAL', grupo: 'Alvenaria' },
+
+    // ── COBERTURA ──
+    { codigoSinapi: '00003421', descricao: 'TELHA CERAMICA TIPO ROMANA, CAPA E CANAL', unidade: 'UN', precoMediano: 2.15, categoria: 'MATERIAL', grupo: 'Cobertura' },
+    { codigoSinapi: '00003422', descricao: 'TELHA CERAMICA TIPO COLONIAL', unidade: 'UN', precoMediano: 1.95, categoria: 'MATERIAL', grupo: 'Cobertura' },
+    { codigoSinapi: '00011765', descricao: 'TELHA DE FIBROCIMENTO ONDULADA E = 6 MM, 2,44 X 1,10 M (SEM AMIANTO)', unidade: 'UN', precoMediano: 52.80, categoria: 'MATERIAL', grupo: 'Cobertura' },
+    { codigoSinapi: '00020083', descricao: 'TELHA METALICA / GALVANIZADA TRAPEZOIDAL, E=0,43MM', unidade: 'M2', precoMediano: 38.90, categoria: 'MATERIAL', grupo: 'Cobertura' },
+    { codigoSinapi: '00005075', descricao: 'MADEIRA SERRADA NAO APARELHADA (BRUTAS) CAMBARA / CEDRINHO PARA TELHADO', unidade: 'M3', precoMediano: 2850.00, categoria: 'MATERIAL', grupo: 'Cobertura' },
+    { codigoSinapi: '00005071', descricao: 'CUMEEIRA CERAMICA PARA TELHA ROMANA', unidade: 'UN', precoMediano: 3.80, categoria: 'MATERIAL', grupo: 'Cobertura' },
+    { codigoSinapi: '00021090', descricao: 'MANTA SUBCOBERTURA (MANTA TERMICA / ISOLANTE) PARA TELHADO', unidade: 'M2', precoMediano: 6.50, categoria: 'MATERIAL', grupo: 'Cobertura' },
+    { codigoSinapi: '00006123', descricao: 'CALHA EM CHAPA DE ACO GALVANIZADO N.26, DESENVOLVIMENTO 33 CM', unidade: 'M', precoMediano: 32.40, categoria: 'MATERIAL', grupo: 'Cobertura' },
+
+    // ── REVESTIMENTO ──
+    { codigoSinapi: '00001107', descricao: 'ARGAMASSA INDUSTRIALIZADA PARA REBOCO/EMBOÇO, ESPESSURA 20MM', unidade: 'KG', precoMediano: 0.55, categoria: 'MATERIAL', grupo: 'Revestimento' },
+    { codigoSinapi: '00007267', descricao: 'MASSA CORRIDA PVA PARA PAREDES INTERNAS', unidade: 'L', precoMediano: 5.80, categoria: 'MATERIAL', grupo: 'Revestimento' },
+    { codigoSinapi: '00006070', descricao: 'CHAPISCO TRACO 1:3 (CIMENTO E AREIA GROSSA) PREPARO MANUAL', unidade: 'M2', precoMediano: 4.25, categoria: 'COMPOSICAO', grupo: 'Revestimento' },
+    { codigoSinapi: '00006071', descricao: 'EMBOÇO/REBOCO TRACO 1:2:8 (CIMENTO, CAL E AREIA) ESPESSURA 20MM', unidade: 'M2', precoMediano: 18.50, categoria: 'COMPOSICAO', grupo: 'Revestimento' },
+    { codigoSinapi: '00025955', descricao: 'TEXTURA ACRILICA PARA FACHADA EXTERNA, APLICACAO MANUAL', unidade: 'M2', precoMediano: 14.80, categoria: 'COMPOSICAO', grupo: 'Revestimento' },
+    { codigoSinapi: '00007290', descricao: 'GESSO EM PO PARA REVESTIMENTO', unidade: 'KG', precoMediano: 1.10, categoria: 'MATERIAL', grupo: 'Revestimento' },
+    { codigoSinapi: '00034513', descricao: 'FORRO DE PVC, LAMINAS DE 200 MM, BRANCO', unidade: 'M2', precoMediano: 32.50, categoria: 'MATERIAL', grupo: 'Revestimento' },
+
+    // ── PISOS ──
+    { codigoSinapi: '00007334', descricao: 'PISO CERAMICO ESMALTADO PARA AREA INTERNA, PEI-4, 45X45 CM', unidade: 'M2', precoMediano: 35.90, categoria: 'MATERIAL', grupo: 'Pisos' },
+    { codigoSinapi: '00007335', descricao: 'PORCELANATO ESMALTADO PARA PISO, RETIFICADO, 60X60 CM', unidade: 'M2', precoMediano: 52.80, categoria: 'MATERIAL', grupo: 'Pisos' },
+    { codigoSinapi: '00007330', descricao: 'PISO CERAMICO ANTIDERRAPANTE PARA AREA EXTERNA/BANHEIRO, 45X45 CM', unidade: 'M2', precoMediano: 38.70, categoria: 'MATERIAL', grupo: 'Pisos' },
+    { codigoSinapi: '00001108', descricao: 'ARGAMASSA COLANTE INDUSTRIALIZADA AC-II PARA PISOS E PAREDES', unidade: 'KG', precoMediano: 0.95, categoria: 'MATERIAL', grupo: 'Pisos' },
+    { codigoSinapi: '00001109', descricao: 'ARGAMASSA COLANTE INDUSTRIALIZADA AC-III PARA PORCELANATO', unidade: 'KG', precoMediano: 1.85, categoria: 'MATERIAL', grupo: 'Pisos' },
+    { codigoSinapi: '00007336', descricao: 'REJUNTE INDUSTRIALIZADO CIMENTICIO PARA PISOS E AZULEJOS', unidade: 'KG', precoMediano: 4.20, categoria: 'MATERIAL', grupo: 'Pisos' },
+    { codigoSinapi: '00034741', descricao: 'CONTRAPISO EM ARGAMASSA TRACO 1:4 (CIMENTO E AREIA), E=3CM', unidade: 'M2', precoMediano: 22.40, categoria: 'COMPOSICAO', grupo: 'Pisos' },
+    { codigoSinapi: '00007331', descricao: 'AZULEJO CERAMICO ESMALTADO PARA PAREDE, 33X45 CM', unidade: 'M2', precoMediano: 28.90, categoria: 'MATERIAL', grupo: 'Pisos' },
+
+    // ── HIDRÁULICA ──
+    { codigoSinapi: '00002691', descricao: 'TUBO PVC SOLDAVEL, DN 25 MM (3/4"), PARA AGUA FRIA, BARRA 6M', unidade: 'M', precoMediano: 4.85, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002692', descricao: 'TUBO PVC SOLDAVEL, DN 32 MM (1"), PARA AGUA FRIA, BARRA 6M', unidade: 'M', precoMediano: 7.20, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002693', descricao: 'TUBO PVC SOLDAVEL, DN 50 MM (1.1/2"), PARA AGUA FRIA', unidade: 'M', precoMediano: 12.30, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002700', descricao: 'TUBO PVC ESGOTO SERIE NORMAL, DN 40 MM, BARRA 6M', unidade: 'M', precoMediano: 6.85, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002701', descricao: 'TUBO PVC ESGOTO SERIE NORMAL, DN 50 MM, BARRA 6M', unidade: 'M', precoMediano: 8.40, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002702', descricao: 'TUBO PVC ESGOTO SERIE NORMAL, DN 100 MM, BARRA 6M', unidade: 'M', precoMediano: 15.90, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002703', descricao: 'TUBO PVC ESGOTO SERIE NORMAL, DN 150 MM, BARRA 6M', unidade: 'M', precoMediano: 32.60, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002750', descricao: 'JOELHO PVC SOLDAVEL 90 GRAUS, DN 25 MM (3/4")', unidade: 'UN', precoMediano: 0.85, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002751', descricao: 'TE PVC SOLDAVEL 90 GRAUS, DN 25 MM (3/4")', unidade: 'UN', precoMediano: 1.65, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002760', descricao: 'REGISTRO DE GAVETA BRUTO EM LATAO, DN 3/4"', unidade: 'UN', precoMediano: 32.50, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00002761', descricao: 'REGISTRO DE PRESSAO CROMADO, DN 1/2" OU 3/4"', unidade: 'UN', precoMediano: 45.80, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00010757', descricao: 'CAIXA DAGUA EM POLIETILENO / FIBRA, 500 LITROS', unidade: 'UN', precoMediano: 285.00, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00010758', descricao: 'CAIXA DAGUA EM POLIETILENO / FIBRA, 1000 LITROS', unidade: 'UN', precoMediano: 420.00, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00009843', descricao: 'COLA / ADESIVO PARA PVC, BISNAGA 75G', unidade: 'UN', precoMediano: 8.50, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+    { codigoSinapi: '00034621', descricao: 'CAIXA SIFONADA PVC 150 X 150 X 50 MM COM GRELHA QUADRADA BRANCA', unidade: 'UN', precoMediano: 14.90, categoria: 'MATERIAL', grupo: 'Hidráulica' },
+
+    // ── ELÉTRICA ──
+    { codigoSinapi: '00001560', descricao: 'FIO DE COBRE FLEXIVEL ISOLADO, 750V, SECAO 1,5 MM2', unidade: 'M', precoMediano: 1.25, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001561', descricao: 'FIO DE COBRE FLEXIVEL ISOLADO, 750V, SECAO 2,5 MM2', unidade: 'M', precoMediano: 1.95, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001562', descricao: 'FIO DE COBRE FLEXIVEL ISOLADO, 750V, SECAO 4,0 MM2', unidade: 'M', precoMediano: 3.25, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001563', descricao: 'FIO DE COBRE FLEXIVEL ISOLADO, 750V, SECAO 6,0 MM2', unidade: 'M', precoMediano: 4.80, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001564', descricao: 'CABO DE COBRE FLEXIVEL ISOLADO, 750V, SECAO 10,0 MM2', unidade: 'M', precoMediano: 8.50, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001590', descricao: 'ELETRODUTO PVC RIGIDO ROSCAVEL, DN 20 MM (1/2")', unidade: 'M', precoMediano: 2.40, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001591', descricao: 'ELETRODUTO PVC RIGIDO ROSCAVEL, DN 25 MM (3/4")', unidade: 'M', precoMediano: 3.10, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001600', descricao: 'CURVA PVC ROSCAVEL PARA ELETRODUTO, 90 GRAUS, DN 20 MM', unidade: 'UN', precoMediano: 0.95, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00012100', descricao: 'DISJUNTOR TERMOMAGNETICO MONOPOLAR 10A / 16A / 20A', unidade: 'UN', precoMediano: 12.80, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00012101', descricao: 'DISJUNTOR TERMOMAGNETICO BIPOLAR 20A / 25A / 32A', unidade: 'UN', precoMediano: 35.60, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00012102', descricao: 'DISJUNTOR DIFERENCIAL RESIDUAL (DR) BIPOLAR 25A / 30MA', unidade: 'UN', precoMediano: 95.00, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00012110', descricao: 'QUADRO DE DISTRIBUICAO EM PVC PARA 8 / 12 DISJUNTORES, EMBUTIR', unidade: 'UN', precoMediano: 62.50, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00012150', descricao: 'TOMADA 2P+T 10A, 250V, PADRAO NBR 14136, COMPLETA (PLACA + SUPORTE + MODULO)', unidade: 'UN', precoMediano: 15.80, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00012151', descricao: 'INTERRUPTOR SIMPLES 1 TECLA, 10A, 250V, COMPLETO (PLACA + SUPORTE + MODULO)', unidade: 'UN', precoMediano: 14.50, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00012152', descricao: 'INTERRUPTOR SIMPLES 2 TECLAS, 10A, 250V, COMPLETO (PLACA + SUPORTE + MODULO)', unidade: 'UN', precoMediano: 22.30, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001520', descricao: 'CAIXA DE PASSAGEM / CONDULETE 4X2 PVC, FUNDO MOVEL, EMBUTIR', unidade: 'UN', precoMediano: 2.10, categoria: 'MATERIAL', grupo: 'Elétrica' },
+    { codigoSinapi: '00001521', descricao: 'CAIXA OCTOGONAL 4X4 PVC PARA PONTO DE LUZ/TETO', unidade: 'UN', precoMediano: 2.80, categoria: 'MATERIAL', grupo: 'Elétrica' },
+
+    // ── PINTURA ──
+    { codigoSinapi: '00006189', descricao: 'TINTA LATEX ACRILICA PREMIUM PARA PAREDES INTERNAS E EXTERNAS', unidade: 'L', precoMediano: 18.50, categoria: 'MATERIAL', grupo: 'Pintura' },
+    { codigoSinapi: '00006190', descricao: 'TINTA LATEX PVA STANDARD PARA PAREDES INTERNAS', unidade: 'L', precoMediano: 8.90, categoria: 'MATERIAL', grupo: 'Pintura' },
+    { codigoSinapi: '00006195', descricao: 'SELADOR ACRILICO PARA PAREDES', unidade: 'L', precoMediano: 7.20, categoria: 'MATERIAL', grupo: 'Pintura' },
+    { codigoSinapi: '00006196', descricao: 'FUNDO PREPARADOR DE PAREDES BASE AGUA', unidade: 'L', precoMediano: 14.80, categoria: 'MATERIAL', grupo: 'Pintura' },
+    { codigoSinapi: '00007268', descricao: 'MASSA ACRILICA PARA PAREDES EXTERNAS', unidade: 'L', precoMediano: 7.50, categoria: 'MATERIAL', grupo: 'Pintura' },
+    { codigoSinapi: '00006200', descricao: 'TINTA ESMALTE SINTETICO BRILHANTE PARA MADEIRA/METAL', unidade: 'L', precoMediano: 28.50, categoria: 'MATERIAL', grupo: 'Pintura' },
+    { codigoSinapi: '00006198', descricao: 'ROLO DE LA PARA PINTURA, 23 CM', unidade: 'UN', precoMediano: 12.80, categoria: 'MATERIAL', grupo: 'Pintura' },
+    { codigoSinapi: '00006199', descricao: 'LIXA DAGUA PARA MASSA E PINTURA, GRAO 120 / 150', unidade: 'UN', precoMediano: 2.30, categoria: 'MATERIAL', grupo: 'Pintura' },
+
+    // ── ESQUADRIAS ──
+    { codigoSinapi: '00011722', descricao: 'JANELA DE ALUMINIO DE CORRER, 2 FOLHAS, COM VIDRO, 1,20 X 1,20 M', unidade: 'UN', precoMediano: 520.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011723', descricao: 'JANELA DE ALUMINIO DE CORRER, 2 FOLHAS, COM VIDRO, 1,50 X 1,20 M', unidade: 'UN', precoMediano: 620.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011725', descricao: 'JANELA DE ALUMINIO BASCULANTE, COM VIDRO, 0,60 X 0,60 M (BANHEIRO)', unidade: 'UN', precoMediano: 195.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011730', descricao: 'PORTA DE MADEIRA SEMI-OCA PARA PINTURA, 0,70 X 2,10 M (INTERNA)', unidade: 'UN', precoMediano: 165.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011731', descricao: 'PORTA DE MADEIRA SEMI-OCA PARA PINTURA, 0,80 X 2,10 M (INTERNA)', unidade: 'UN', precoMediano: 178.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011735', descricao: 'PORTA DE MADEIRA MACICA PARA ENTRADA PRINCIPAL, 0,80 X 2,10 M', unidade: 'UN', precoMediano: 450.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011738', descricao: 'BATENTE / MARCO DE MADEIRA PARA PORTA, LARGURA 14 CM', unidade: 'JG', precoMediano: 85.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011740', descricao: 'FECHADURA DE EMBUTIR PARA PORTA INTERNA, PADRAO POPULAR', unidade: 'UN', precoMediano: 42.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011741', descricao: 'FECHADURA DE EMBUTIR PARA PORTA EXTERNA/ENTRADA, COM CHAVE', unidade: 'UN', precoMediano: 68.00, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+    { codigoSinapi: '00011742', descricao: 'DOBRADICA DE FERRO/ACO 3" X 2.1/2" PARA PORTA', unidade: 'UN', precoMediano: 6.50, categoria: 'MATERIAL', grupo: 'Esquadrias' },
+
+    // ── LOUÇAS E METAIS ──
+    { codigoSinapi: '00009836', descricao: 'VASO SANITARIO (BACIA) CONVENCIONAL DE LOUCA BRANCA COM CAIXA ACOPLADA', unidade: 'UN', precoMediano: 295.00, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009838', descricao: 'LAVATORIO / PIA DE LOUCA BRANCA PARA BANHEIRO, COM COLUNA, 45 X 35 CM', unidade: 'UN', precoMediano: 145.00, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009840', descricao: 'TANQUE DE LOUCA / MARMORE SINTETICO PARA LAVANDERIA, 22 LITROS', unidade: 'UN', precoMediano: 185.00, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009842', descricao: 'PIA DE COZINHA EM ACO INOXIDAVEL COM 1 CUBA, 1,20 X 0,52 M', unidade: 'UN', precoMediano: 195.00, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009850', descricao: 'TORNEIRA CROMADA DE MESA PARA PIA DE COZINHA, BICA MOVEL, 1/2" OU 3/4"', unidade: 'UN', precoMediano: 75.00, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009851', descricao: 'TORNEIRA CROMADA DE PAREDE PARA LAVATORIO, 1/2" OU 3/4"', unidade: 'UN', precoMediano: 38.00, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009855', descricao: 'CHUVEIRO ELETRICO TIPO DUCHA, 4 TEMPERATURAS, 5500W', unidade: 'UN', precoMediano: 62.00, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009845', descricao: 'SIFAO SANFONADO UNIVERSAL EM PVC CROMADO 1" X 1.1/2"', unidade: 'UN', precoMediano: 12.50, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+    { codigoSinapi: '00009846', descricao: 'ENGATE FLEXIVEL PLASTICO / INOX 1/2" X 30 CM', unidade: 'UN', precoMediano: 8.90, categoria: 'MATERIAL', grupo: 'Louças e Metais' },
+
+    // ── IMPERMEABILIZAÇÃO ──
+    { codigoSinapi: '00001885', descricao: 'MANTA ASFALTICA ELASTOMERICA PRE-FABRICADA, E=3MM, COM ARMADURA (TIPO II)', unidade: 'M2', precoMediano: 28.50, categoria: 'MATERIAL', grupo: 'Impermeabilização' },
+    { codigoSinapi: '00001886', descricao: 'MANTA ASFALTICA ELASTOMERICA PRE-FABRICADA, E=4MM, COM ARMADURA (TIPO III)', unidade: 'M2', precoMediano: 38.90, categoria: 'MATERIAL', grupo: 'Impermeabilização' },
+    { codigoSinapi: '00001890', descricao: 'IMPERMEABILIZANTE LIQUIDO FLEXIVEL (MANTA LIQUIDA) BASE ACRILICA', unidade: 'KG', precoMediano: 18.50, categoria: 'MATERIAL', grupo: 'Impermeabilização' },
+    { codigoSinapi: '00001891', descricao: 'PRIMER / EMULSAO ASFALTICA PARA IMPERMEABILIZACAO', unidade: 'L', precoMediano: 15.20, categoria: 'MATERIAL', grupo: 'Impermeabilização' },
+    { codigoSinapi: '00001895', descricao: 'ADITIVO IMPERMEABILIZANTE PARA ARGAMASSA E CONCRETO (VEDACIT/SIKA)', unidade: 'L', precoMediano: 12.80, categoria: 'MATERIAL', grupo: 'Impermeabilização' },
+
+    // ── MÃO DE OBRA ──
+    { codigoSinapi: '00025957', descricao: 'PEDREIRO COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 23.50, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025958', descricao: 'SERVENTE / AUXILIAR DE OBRAS COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 16.80, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025960', descricao: 'ELETRICISTA COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 25.40, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025961', descricao: 'ENCANADOR / BOMBEIRO HIDRAULICO COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 24.80, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025962', descricao: 'PINTOR COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 22.30, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025963', descricao: 'CARPINTEIRO / MARCENEIRO COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 24.10, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025964', descricao: 'ARMADOR / FERREIRO COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 23.80, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025965', descricao: 'AZULEJISTA / LADRILHISTA COM ENCARGOS COMPLEMENTARES', unidade: 'H', precoMediano: 23.50, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025970', descricao: 'MESTRE DE OBRA COM ENCARGOS COMPLEMENTARES', unidade: 'MES', precoMediano: 5800.00, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+    { codigoSinapi: '00025971', descricao: 'ENGENHEIRO CIVIL DE OBRA JUNIOR (RESPONSAVEL TECNICO)', unidade: 'MES', precoMediano: 12500.00, categoria: 'MAO_DE_OBRA', grupo: 'Mão de Obra' },
+
+    // ── EQUIPAMENTOS ──
+    { codigoSinapi: '00005932', descricao: 'BETONEIRA CAPACIDADE NOMINAL DE 400 L, MOTOR ELETRICO', unidade: 'H', precoMediano: 1.85, categoria: 'EQUIPAMENTO', grupo: 'Equipamentos' },
+    { codigoSinapi: '00005935', descricao: 'VIBRADOR DE IMERSAO PARA CONCRETO, MOTOR ELETRICO 2 HP', unidade: 'H', precoMediano: 1.20, categoria: 'EQUIPAMENTO', grupo: 'Equipamentos' },
+    { codigoSinapi: '00005940', descricao: 'ANDAIME METALICO TUBULAR DE ENCAIXE (LOCACAO)', unidade: 'M2/MES', precoMediano: 8.50, categoria: 'EQUIPAMENTO', grupo: 'Equipamentos' },
+    { codigoSinapi: '00005950', descricao: 'RETROESCAVADEIRA SOBRE RODAS, POTENCIA 75 HP (LOCACAO / HORA PRODUTIVA)', unidade: 'H', precoMediano: 165.00, categoria: 'EQUIPAMENTO', grupo: 'Equipamentos' },
+    { codigoSinapi: '00005955', descricao: 'CAMINHAO BASCULANTE 6 M3, POTENCIA 170 CV (LOCACAO / HORA PRODUTIVA)', unidade: 'H', precoMediano: 185.00, categoria: 'EQUIPAMENTO', grupo: 'Equipamentos' },
+
+    // ── ÁREA EXTERNA ──
+    { codigoSinapi: '00034600', descricao: 'PISO INTERTRAVADO (BLOQUETE) DE CONCRETO RETANGULAR, E=6CM, COR NATURAL', unidade: 'M2', precoMediano: 42.00, categoria: 'MATERIAL', grupo: 'Área Externa' },
+    { codigoSinapi: '00034601', descricao: 'MEIO-FIO / GUIA DE CONCRETO PRE-MOLDADO, 100 X 15 X 30 CM', unidade: 'M', precoMediano: 18.50, categoria: 'MATERIAL', grupo: 'Área Externa' },
+    { codigoSinapi: '00034605', descricao: 'GRAMA EM PLACAS / LEIVA PARA JARDIM (ESMERALDA OU SAO CARLOS)', unidade: 'M2', precoMediano: 12.00, categoria: 'MATERIAL', grupo: 'Área Externa' },
+    { codigoSinapi: '00020085', descricao: 'PORTAO METALICO / DE FERRO PARA GARAGEM, CHAPA 18, 3,00 X 2,20 M', unidade: 'UN', precoMediano: 1850.00, categoria: 'MATERIAL', grupo: 'Área Externa' },
+    { codigoSinapi: '00020086', descricao: 'GRADE / GRADIL METALICO PARA MURO OU JANELA, FERRO REDONDO 1/2"', unidade: 'M2', precoMediano: 185.00, categoria: 'MATERIAL', grupo: 'Área Externa' },
+    { codigoSinapi: '00020088', descricao: 'MURO DE BLOCO DE CONCRETO, E=14CM, COM FUNDACAO E PILARES (COMPOSICAO)', unidade: 'M2', precoMediano: 165.00, categoria: 'COMPOSICAO', grupo: 'Área Externa' },
+  ];
+
+  // Gerar variações por UF com fator multiplicador
+  const UF_FATORES: Record<string, number> = {
+    'MG': 1.00,  // Base
+    'SP': 1.12,  // São Paulo: +12%
+    'RJ': 1.08,  // Rio de Janeiro: +8%
+    'BA': 0.92,  // Bahia: -8%
+    'PR': 1.05,  // Paraná: +5%
+    'GO': 0.95,  // Goiás: -5%
+    'CE': 0.90,  // Ceará: -10%
+    'PE': 0.93,  // Pernambuco: -7%
+  };
+
+  const sinapiData: Array<{
+    codigoSinapi: string;
+    descricao: string;
+    unidade: string;
+    precoMediano: number;
+    categoria: string;
+    grupo: string;
+    uf: string;
+    mesReferencia: string;
+    tipo: string;
+  }> = [];
+
+  for (const [uf, fator] of Object.entries(UF_FATORES)) {
+    for (const insumo of SINAPI_INSUMOS_BASE) {
+      sinapiData.push({
+        ...insumo,
+        precoMediano: Math.round(insumo.precoMediano * fator * 100) / 100,
+        uf,
+        mesReferencia: '08/2024',
+        tipo: 'NAO_DESONERADO',
+      });
+    }
+  }
+
+  await prisma.sinapiItem.createMany({ data: sinapiData });
+  console.log(`✅ ${sinapiData.length} insumos SINAPI inseridos para ${Object.keys(UF_FATORES).length} estados.`);
 
   console.log('✅ Seed executado com sucesso!');
   console.log(`🏢 Empresa: ${company.name}`);

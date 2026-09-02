@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Building,
   UserCheck,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -36,6 +37,7 @@ const OPERATIONAL_MENU = [
   { href: '/obras', label: 'Obras', icon: Building2 },
   { href: '/centros-de-custos', label: 'Centros de Custos', icon: FolderKanban },
   { href: '/orcamento-executivo', label: 'Orçamento Executivo', icon: Calculator },
+  { href: '/sinapi', label: 'Tabela SINAPI', icon: Database, badge: 'PRO' },
   { href: '/fornecedores', label: 'Fornecedores', icon: Users },
   { href: '/cotacoes', label: 'Cotações', icon: FileSpreadsheet },
   { href: '/compras', label: 'Compras', icon: ShoppingCart },

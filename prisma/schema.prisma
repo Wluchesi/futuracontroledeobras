@@ -257,3 +257,17 @@ model AuditLog {
   details       String?
   createdAt     DateTime @default(now())
 }
+
+model SinapiItem {
+  id            String   @id @default(uuid())
+  codigoSinapi  String           // Código SINAPI oficial (ex: "00000370")
+  descricao     String           // Descrição do insumo
+  unidade       String           // Unidade (KG, M3, M2, UN, SC, L, etc.)
+  precoMediano  Float            // Preço mediano de referência
+  categoria     String           // MATERIAL, MAO_DE_OBRA, EQUIPAMENTO, COMPOSICAO
+  grupo         String           // Grupo funcional (Fundações, Alvenaria, Elétrica, etc.)
+  uf            String   @default("MG")       // Estado de referência
+  mesReferencia String   @default("08/2024")  // Mês/Ano da tabela
+  tipo          String   @default("NAO_DESONERADO") // DESONERADO ou NAO_DESONERADO
+  createdAt     DateTime @default(now())
+}
