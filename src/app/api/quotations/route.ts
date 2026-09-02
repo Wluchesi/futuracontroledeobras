@@ -129,7 +129,22 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, isChosen, quantity, unitPrice, freight, discount, taxes, supplierId, paymentTerms, ...data } = body;
+    const {
+      id,
+      budgetItemId,
+      supplierId,
+      quantity,
+      unitPrice,
+      freight,
+      discount,
+      taxes,
+      deliveryDays,
+      paymentTerms,
+      notes,
+      isChosen,
+      validityDate,
+    } = body;
+
     if (!id) return NextResponse.json({ error: 'ID da cotação é obrigatório.' }, { status: 400 });
 
     const currentQuotation = await prisma.quotation.findUnique({
@@ -146,18 +161,19 @@ export async function PUT(request: Request) {
     const tx = taxes !== undefined ? Number(taxes) : currentQuotation.taxes;
     const finalPrice = calculateQuotationFinalPrice(qty, price, frt, disc, tx);
     const suppId = supplierId || currentQuotation.supplierId;
+    const targetBudgetItemId = budgetItemId || currentQuotation.budgetItemId;
 
     const willBeChosen = isChosen !== undefined ? isChosen : currentQuotation.isChosen;
 
     if (willBeChosen) {
       await prisma.quotation.updateMany({
-        where: { budgetItemId: currentQuotation.budgetItemId },
+        where: { budgetItemId: targetBudgetItemId },
         data: { isChosen: false },
       });
 
       const unitPriceComputed = qty > 0 ? finalPrice / qty : price;
       await prisma.budgetItem.update({
-        where: { id: currentQuotation.budgetItemId },
+        where: { id: targetBudgetItemId },
         data: {
           chosenSupplierId: suppId,
           contractedUnitPrice: unitPriceComputed,
@@ -171,7 +187,7 @@ export async function PUT(request: Request) {
     const updated = await prisma.quotation.update({
       where: { id },
       data: {
-        ...data,
+        budgetItemId: targetBudgetItemId,
         supplierId: suppId,
         quantity: qty,
         unitPrice: price,
@@ -179,8 +195,11 @@ export async function PUT(request: Request) {
         discount: disc,
         taxes: tx,
         finalPrice,
+        deliveryDays: deliveryDays !== undefined ? Number(deliveryDays) : currentQuotation.deliveryDays,
         paymentTerms: paymentTerms !== undefined ? paymentTerms : currentQuotation.paymentTerms,
+        notes: notes !== undefined ? notes : currentQuotation.notes,
         isChosen: willBeChosen,
+        validityDate: validityDate ? new Date(validityDate) : currentQuotation.validityDate,
       },
       include: { supplier: true, budgetItem: true },
     });
@@ -191,11 +210,12 @@ export async function PUT(request: Request) {
       entityId: id,
       previousValue: currentQuotation,
       newValue: updated,
-      details: `Cotação ${id} atualizada.`,
+      details: `Cotação ${id} atualizada com sucesso.`,
     });
 
     return NextResponse.json(updated);
   } catch (error: any) {
+    console.error('Error updating quotation:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

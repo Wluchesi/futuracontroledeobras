@@ -115,9 +115,13 @@ export default function CotacoesPage() {
       if (res.ok) {
         setShowModal(false);
         fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao salvar cotação.');
       }
     } catch (e) {
       console.error(e);
+      alert('Erro de conexão ao salvar cotação.');
     }
   };
 
