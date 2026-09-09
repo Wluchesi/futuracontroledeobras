@@ -20,15 +20,12 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    let formattedPlanName = 'Kitneteiro Pro (R$ 49/mês)';
+    // Gratuito é o padrão — exige pagamento para subir de plano
+    let formattedPlanName = 'Plano Gratuito (1 Obra / 4 Kitnets)';
     let maxProjects = 1;
-    let maxUsers = 10;
+    let maxUsers = 2;
 
-    if (planName === 'Gratuito') {
-      formattedPlanName = 'Plano Gratuito (1 Obra / 4 Kitnets)';
-      maxProjects = 1;
-      maxUsers = 2;
-    } else if (planName === 'Pro') {
+    if (planName === 'Pro') {
       formattedPlanName = 'Kitneteiro Pro (1 Obra / Kitnets Ilimitadas)';
       maxProjects = 1;
       maxUsers = 10;

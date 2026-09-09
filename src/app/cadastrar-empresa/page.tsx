@@ -12,7 +12,7 @@ export default function CadastrarEmpresaPage() {
     userName: '',
     email: '',
     password: '',
-    planName: 'Pro',
+    planName: 'Gratuito',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,9 +157,9 @@ export default function CadastrarEmpresaPage() {
             
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'Gratuito', name: 'Gratuito', label: '1 Obra (4 Kitnets)' },
-                { id: 'Pro', name: 'Kitneteiro Pro', label: 'R$ 49/mês' },
-                { id: 'Premium', name: 'Kitneteiro Premium', label: 'R$ 99/mês + SINAPI' },
+                { id: 'Gratuito', name: 'Gratuito 🎁', label: '1 Obra • 4 Kitnets • Grátis' },
+                { id: 'Pro', name: 'Kitneteiro Pro', label: 'R$ 49/mês • 1 Obra' },
+                { id: 'Premium', name: 'Premium 🚀', label: 'R$ 99/mês • 5 Obras' },
               ].map((plan) => (
                 <button
                   key={plan.id}
@@ -178,6 +178,12 @@ export default function CadastrarEmpresaPage() {
                 </button>
               ))}
             </div>
+            {(formData.planName === 'Pro' || formData.planName === 'Premium') && (
+              <p className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 mt-1">
+                ⚠️ Planos pagos são ativados após o cadastro, na página de <strong>Planos</strong>.
+                Você entrará com o <strong>Plano Gratuito</strong> até realizar o pagamento.
+              </p>
+            )}
           </div>
 
           <button

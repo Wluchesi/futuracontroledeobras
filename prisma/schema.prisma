@@ -12,9 +12,9 @@ model Company {
   id           String        @id @default(uuid())
   name         String
   taxId        String?
-  planName     String        @default("Premium Multi-Obras")
-  maxProjects  Int           @default(10)
-  maxUsers     Int           @default(20)
+  planName     String        @default("Plano Gratuito (1 Obra / 4 Kitnets)")
+  maxProjects  Int           @default(1)
+  maxUsers     Int           @default(2)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   users        User[]
