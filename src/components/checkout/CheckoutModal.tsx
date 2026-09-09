@@ -20,6 +20,7 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
   const [copiedPix, setCopiedPix] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   // Formulário de Cartão de Crédito
   const [cardForm, setCardForm] = useState({
@@ -69,11 +70,18 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
     }
   };
 
-  // Confirmar pagamento PIX (Simula recebimento do Webhook do Gateway)
+  // Confirmar pagamento PIX — consulta o status real no Mercado Pago
   const handleConfirmPixPayment = async () => {
     if (!pixData) return;
     setLoading(true);
     setError(null);
+    setWarning(null);
+
+    if (!companyId) {
+      setError('Sessão expirada ou empresa não identificada. Faça login novamente e tente outra vez.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch('/api/webhooks/payment', {
@@ -88,17 +96,21 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
       });
 
       const data = await res.json().catch(() => null);
+
       if (res.ok && data?.success) {
         if (data.company) {
           updateCompanySession(data.company);
         }
         setSuccess(true);
+      } else if (res.status === 402) {
+        // Pagamento ainda não confirmado pelo banco — sugere aguardar
+        setWarning(data?.error || 'O banco ainda não confirmou o pagamento. Aguarde 1-2 minutos após o PIX e tente novamente.');
       } else {
-        setError(data?.error || 'Aguardando confirmação de pagamento pelo banco.');
+        setError(data?.error || 'Erro ao confirmar pagamento. Tente novamente.');
       }
     } catch (e) {
-      console.error('Webhook test error:', e);
-      setError('Erro ao verificar status do pagamento.');
+      console.error('Webhook error:', e);
+      setError('Erro de conexão ao verificar o pagamento.');
     } finally {
       setLoading(false);
     }
@@ -227,7 +239,13 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
 
             {error && (
               <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl font-medium">
-                {error}
+                ❌ {error}
+              </div>
+            )}
+
+            {warning && (
+              <div className="p-3 bg-amber-950/50 border border-amber-700 text-amber-300 text-xs rounded-xl font-medium">
+                ⏳ {warning}
               </div>
             )}
 
