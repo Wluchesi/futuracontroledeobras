@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { History, Search, User } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/calculations';
 
@@ -14,10 +14,14 @@ export default function AuditoriaPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
+    if (user && !isSuperAdmin(user)) {
       router.push('/');
     }
   }, [user, router]);
+
+  if (user && !isSuperAdmin(user)) {
+    return null;
+  }
 
   useEffect(() => {
     async function fetchLogs() {

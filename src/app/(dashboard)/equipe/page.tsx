@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
 import { Users, UserPlus, Shield, Mail, Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,14 +18,16 @@ export default function EquipePage() {
 
   const currentCompany = user?.company;
   const router = useRouter();
+  const isSuper = isSuperAdmin(user);
+  const isAdmin = user?.role === 'ADMIN' || isSuper;
 
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
+    if (user && !isAdmin) {
       router.push('/');
     }
-  }, [user, router]);
+  }, [user, isAdmin, router]);
 
-  if (user && user.role !== 'ADMIN') {
+  if (user && !isAdmin) {
     return null; // Prevents flashing the page content before redirect
   }
 

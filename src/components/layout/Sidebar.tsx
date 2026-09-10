@@ -53,7 +53,7 @@ const SAAS_MENU = [
 ];
 
 const SYSTEM_MENU = [
-  { href: '/configuracoes', label: 'Configurações', icon: Settings },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
   { href: '/auditoria', label: 'Auditoria', icon: History, superAdminOnly: true },
   { href: '/importar-excel', label: 'Importar Excel', icon: FileUp },
 ];
@@ -74,7 +74,7 @@ export default function Sidebar() {
     role: user?.role || 'USER',
   };
 
-  const isAdmin = userProfile.role === 'ADMIN';
+  const isAdmin = userProfile.role === 'ADMIN' || isSuper;
 
   const renderLink = (item: any) => {
     const Icon = item.icon;
@@ -209,27 +209,51 @@ export default function Sidebar() {
           )}
 
           <div className="flex items-center justify-between pt-1">
-            <Link href="/configuracoes" className="flex items-center space-x-2.5 group cursor-pointer truncate">
-              {userProfile.avatarUrl ? (
-                <img
-                  src={userProfile.avatarUrl}
-                  alt={userProfile.name}
-                  className="w-8 h-8 rounded-full object-cover shadow border border-emerald-500/50 group-hover:scale-105 transition"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow group-hover:scale-105 transition flex-shrink-0">
-                  {userProfile.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              )}
-              {!collapsed && (
-                <div className="flex flex-col truncate">
-                  <span className="text-xs font-semibold text-white truncate group-hover:text-emerald-400 transition">
-                    {userProfile.name}
-                  </span>
-                  <span className="text-[10px] text-slate-400 truncate">{userProfile.email}</span>
-                </div>
-              )}
-            </Link>
+            {isAdmin ? (
+              <Link href="/configuracoes" className="flex items-center space-x-2.5 group cursor-pointer truncate">
+                {userProfile.avatarUrl ? (
+                  <img
+                    src={userProfile.avatarUrl}
+                    alt={userProfile.name}
+                    className="w-8 h-8 rounded-full object-cover shadow border border-emerald-500/50 group-hover:scale-105 transition"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow group-hover:scale-105 transition flex-shrink-0">
+                    {userProfile.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                {!collapsed && (
+                  <div className="flex flex-col truncate">
+                    <span className="text-xs font-semibold text-white truncate group-hover:text-emerald-400 transition">
+                      {userProfile.name}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate">{userProfile.email}</span>
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <div className="flex items-center space-x-2.5 truncate">
+                {userProfile.avatarUrl ? (
+                  <img
+                    src={userProfile.avatarUrl}
+                    alt={userProfile.name}
+                    className="w-8 h-8 rounded-full object-cover shadow border border-slate-700"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-slate-700 text-slate-200 flex items-center justify-center font-bold text-xs shadow flex-shrink-0">
+                    {userProfile.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                {!collapsed && (
+                  <div className="flex flex-col truncate">
+                    <span className="text-xs font-semibold text-slate-200 truncate">
+                      {userProfile.name}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold uppercase truncate">{userProfile.role}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={logout}

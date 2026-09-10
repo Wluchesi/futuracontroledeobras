@@ -2,70 +2,83 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
-import { Settings, ShieldAlert, Building2, UserCheck, Save, Plus, Trash2, Edit3, Lock, Users, Layers, Database, Download } from 'lucide-react';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  Settings,
+  ShieldAlert,
+  Building2,
+  UserCheck,
+  Save,
+  Users,
+  Database,
+  Download,
+  Zap,
+  ArrowRight,
+  Shield,
+} from 'lucide-react';
 
 export default function ConfiguracoesPage() {
   const { selectedProject, refreshProjects } = useProject();
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const isSuper = isSuperAdmin(user);
+  const isAdmin = user?.role === 'ADMIN' || isSuper;
+
+  // Proteção estrita de acesso: Somente Administradores ou Super Admin
+  useEffect(() => {
+    if (user && !isAdmin) {
+      router.push('/');
+    }
+  }, [user, isAdmin, router]);
+
   const [exceedRule, setExceedRule] = useState(selectedProject?.exceedRule || 1);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Estados da Empresa e SaaS
   const [company, setCompany] = useState<any>(null);
-  const [companyFormData, setCompanyFormData] = useState({ id: '', name: '', taxId: '', planName: 'Premium Multi-Obras', maxProjects: 10, maxUsers: 20 });
+  const [companyFormData, setCompanyFormData] = useState({
+    id: '',
+    name: '',
+    taxId: '',
+    planName: 'Plano Gratuito (1 Obra / 4 Kitnets)',
+    maxProjects: 1,
+    maxUsers: 2,
+  });
   const [savingCompany, setSavingCompany] = useState(false);
   const [companySaveMsg, setCompanySaveMsg] = useState('');
 
-  // Estados de Usuários
+  // Lista de Membros da Empresa (isolada por tenant)
   const [usersList, setUsersList] = useState<any[]>([]);
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [userFormData, setUserFormData] = useState({ id: '', name: '', email: '', password: '', role: 'ADMIN', avatarUrl: '' });
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [userSaveError, setUserSaveError] = useState('');
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setUploadingAvatar(true);
-      const fd = new FormData();
-      fd.append('file', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: fd,
-      });
-
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setUserFormData((prev) => ({ ...prev, avatarUrl: data.url }));
-      } else {
-        alert('Erro ao enviar imagem.');
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
 
   const fetchCompanyAndUsers = async () => {
     try {
-      const [resComp, resUsers] = await Promise.all([fetch('/api/company'), fetch('/api/users')]);
+      const companyId = user?.company?.id || user?.companyId;
+      if (!companyId) return;
+
+      const [resComp, resTeam] = await Promise.all([
+        fetch(`/api/company?companyId=${companyId}`),
+        fetch(`/api/equipe?companyId=${companyId}`),
+      ]);
+
       if (resComp.ok) {
         const comp = await resComp.json();
         setCompany(comp);
         setCompanyFormData({
           id: comp.id,
-          name: comp.name || 'Construtora Kitnet Passos Ltda',
-          taxId: comp.taxId || '12.345.678/0001-99',
-          planName: comp.planName || 'Premium Multi-Obras',
-          maxProjects: comp.maxProjects || 10,
-          maxUsers: comp.maxUsers || 20,
+          name: comp.name || 'Sua Construtora',
+          taxId: comp.taxId || '',
+          planName: comp.planName || 'Plano Gratuito',
+          maxProjects: comp.maxProjects || 1,
+          maxUsers: comp.maxUsers || 2,
         });
       }
-      if (resUsers.ok) {
-        setUsersList(await resUsers.json());
+
+      if (resTeam.ok) {
+        const teamData = await resTeam.json();
+        setUsersList(teamData.users || []);
       }
     } catch (e) {
       console.error(e);
@@ -73,8 +86,10 @@ export default function ConfiguracoesPage() {
   };
 
   useEffect(() => {
-    fetchCompanyAndUsers();
-  }, []);
+    if (user && isAdmin) {
+      fetchCompanyAndUsers();
+    }
+  }, [user, isAdmin]);
 
   const handleSaveExceedRule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,10 +120,13 @@ export default function ConfiguracoesPage() {
       const res = await fetch('/api/company', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(companyFormData),
+        body: JSON.stringify({
+          ...companyFormData,
+          isSuperAdmin: isSuper,
+        }),
       });
       if (res.ok) {
-        setCompanySaveMsg('Dados e limites do SaaS atualizados! 🟢');
+        setCompanySaveMsg('Dados da empresa atualizados com sucesso! 🟢');
         setTimeout(() => setCompanySaveMsg(''), 3000);
         fetchCompanyAndUsers();
       }
@@ -119,70 +137,35 @@ export default function ConfiguracoesPage() {
     }
   };
 
-  const handleSaveUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUserSaveError('');
-    try {
-      const method = userFormData.id ? 'PUT' : 'POST';
-      const res = await fetch('/api/users', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userFormData),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        setUserSaveError(json.error || 'Erro ao salvar usuário.');
-        return;
-      }
-
-      setShowUserModal(false);
-      fetchCompanyAndUsers();
-    } catch (e: any) {
-      setUserSaveError(e.message);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string, name: string) => {
-    if (!confirm(`Deseja realmente remover o usuário ${name}?`)) return;
-    try {
-      const res = await fetch(`/api/users?id=${userId}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (!res.ok) {
-        alert(json.error || 'Não foi possível excluir.');
-        return;
-      }
-      fetchCompanyAndUsers();
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  if (user && !isAdmin) {
+    return null;
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center">
             <Settings className="w-6 h-6 text-emerald-600 mr-2.5" />
-            Painel de Administração do SaaS & Limitações
+            Configurações da Empresa & Sistema
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Gerenciamento de usuários administradores, limites do SaaS, dados da empresa e regras de bloqueio
+            Gerenciamento de dados cadastrais, regras orçamentárias e visão de equipe
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Perfil da Empresa & Limitações do SaaS */}
+        {/* Card 1: Perfil da Empresa & Limites SaaS */}
         <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <h2 className="text-base font-bold text-slate-900 flex items-center justify-between border-b pb-3">
             <span className="flex items-center">
               <Building2 className="w-5 h-5 text-emerald-600 mr-2" />
-              Perfil da Empresa & Limites de Uso SaaS
+              Perfil da Empresa
             </span>
             <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full uppercase">
-              {company?.planName || 'Premium Multi-Obras'}
+              {company?.planName || 'Plano Gratuito'}
             </span>
           </h2>
 
@@ -194,7 +177,8 @@ export default function ConfiguracoesPage() {
                 required
                 value={companyFormData.name}
                 onChange={(e) => setCompanyFormData({ ...companyFormData, name: e.target.value })}
-                className="w-full p-2.5 border border-slate-200 rounded-xl"
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-hidden"
+                placeholder="Ex: Construtora Passos Ltda"
               />
             </div>
             <div>
@@ -203,45 +187,81 @@ export default function ConfiguracoesPage() {
                 type="text"
                 value={companyFormData.taxId}
                 onChange={(e) => setCompanyFormData({ ...companyFormData, taxId: e.target.value })}
-                className="w-full p-2.5 border border-slate-200 rounded-xl"
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-hidden"
+                placeholder="00.000.000/0001-00"
               />
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-              <span className="font-bold text-slate-800 text-xs block">Configuração de Limites do SaaS</span>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="font-semibold block mb-1 text-[11px] text-slate-600">Plano SaaS</label>
-                  <input
-                    type="text"
-                    value={companyFormData.planName}
-                    onChange={(e) => setCompanyFormData({ ...companyFormData, planName: e.target.value })}
-                    className="w-full p-2 border rounded-xl font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1 text-[11px] text-slate-600">Máx. Obras</label>
-                  <input
-                    type="number"
-                    value={companyFormData.maxProjects}
-                    onChange={(e) => setCompanyFormData({ ...companyFormData, maxProjects: Number(e.target.value) })}
-                    className="w-full p-2 border rounded-xl font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1 text-[11px] text-slate-600">Máx. Usuários</label>
-                  <input
-                    type="number"
-                    value={companyFormData.maxUsers}
-                    onChange={(e) => setCompanyFormData({ ...companyFormData, maxUsers: Number(e.target.value) })}
-                    className="w-full p-2 border rounded-xl font-bold"
-                  />
-                </div>
+            {/* Configuração de Limites do SaaS */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-emerald-600" />
+                  Limites do Plano SaaS
+                </span>
+                {!isSuper && (
+                  <Link
+                    href="/planos"
+                    className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                  >
+                    <span>Mudar de Plano</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                )}
               </div>
+
+              {isSuper ? (
+                /* Super Admin pode editar limites diretamente */
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="font-semibold block mb-1 text-[11px] text-slate-600">Plano SaaS</label>
+                    <input
+                      type="text"
+                      value={companyFormData.planName}
+                      onChange={(e) => setCompanyFormData({ ...companyFormData, planName: e.target.value })}
+                      className="w-full p-2 border rounded-xl font-bold text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1 text-[11px] text-slate-600">Máx. Obras</label>
+                    <input
+                      type="number"
+                      value={companyFormData.maxProjects}
+                      onChange={(e) => setCompanyFormData({ ...companyFormData, maxProjects: Number(e.target.value) })}
+                      className="w-full p-2 border rounded-xl font-bold text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1 text-[11px] text-slate-600">Máx. Usuários</label>
+                    <input
+                      type="number"
+                      value={companyFormData.maxUsers}
+                      onChange={(e) => setCompanyFormData({ ...companyFormData, maxUsers: Number(e.target.value) })}
+                      className="w-full p-2 border rounded-xl font-bold text-xs"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Usuário Administrador de Tenant: visualização clara dos limites de sua assinatura */
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 bg-white rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Limite de Obras</span>
+                    <span className="text-sm font-extrabold text-slate-800">
+                      {company?.maxProjects || 1} {company?.maxProjects === 1 ? 'obra ativa' : 'obras ativas'}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Limite de Equipe</span>
+                    <span className="text-sm font-extrabold text-slate-800">
+                      {company?.maxUsers || 2} {company?.maxUsers === 1 ? 'usuário' : 'usuários'}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {companySaveMsg && (
-              <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl font-bold text-center text-xs">
+              <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-xl font-bold text-center text-xs">
                 {companySaveMsg}
               </div>
             )}
@@ -252,7 +272,7 @@ export default function ConfiguracoesPage() {
               className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition w-full"
             >
               <Save className="w-4 h-4" />
-              <span>Salvar Dados da Empresa e Limites</span>
+              <span>Salvar Dados Cadastrais</span>
             </button>
           </form>
         </div>
@@ -338,221 +358,76 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Seção Backup do Banco de Dados */}
-      <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center">
-            <Database className="w-5 h-5 text-emerald-600 mr-2" />
-            Backup do Banco de Dados
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Faça o download de uma cópia de segurança completa do banco de dados SQLite (`dev.db`) diretamente no seu computador para fins de backup e histórico.
-          </p>
-        </div>
-        <div className="flex items-center">
-          <a
-            href="/api/backup"
-            download="backup-gerenciador-de-obras.db"
-            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
-          >
-            <Download className="w-4 h-4" />
-            <span>Fazer Download do Backup (.db)</span>
-          </a>
-        </div>
-      </div>
-
-      {/* Seção 3: Gestão de Usuários Administradores do SaaS */}
+      {/* Card 3: Gestão de Equipe & Permissões (Centralizado com /equipe) */}
       <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center">
               <Users className="w-5 h-5 text-emerald-600 mr-2" />
-              Gestão de Usuários Administradores ({usersList.length}/{company?.maxUsers || 20})
+              Equipe & Permissões da Construtora ({usersList.length}/{company?.maxUsers || 2})
             </h2>
-            <p className="text-xs text-slate-500">
-              Administradores possuem acesso irrestrito a todos os serviços do SaaS, edição de usuários e gestão de limites.
+            <p className="text-xs text-slate-500 mt-0.5">
+              Usuários cadastrados e funções atribuídas (Engenheiros, Compradores, Financeiro e Administradores).
             </p>
           </div>
-          <button
-            onClick={() => {
-              setUserFormData({ id: '', name: '', email: '', password: '', role: 'ADMIN', avatarUrl: '' });
-              setUserSaveError('');
-              setShowUserModal(true);
-            }}
-            className="flex items-center justify-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition"
+          <Link
+            href="/equipe"
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-xs"
           >
-            <Plus className="w-4 h-4" />
-            <span>Novo Administrador</span>
-          </button>
+            <UserCheck className="w-4 h-4" />
+            <span>Gerenciar Equipe Completa</span>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {usersList.map((user) => (
-            <div key={user.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2 relative">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-2">
-                  {user.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.name}
-                      className="w-9 h-9 rounded-full object-cover shadow border border-emerald-500"
-                    />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow">
-                      {user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <span className="font-bold text-slate-900 text-sm block">{user.name}</span>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase">
-                      {user.role}
-                    </span>
-                  </div>
+          {usersList.map((u) => (
+            <div key={u.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
+                  {u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={() => {
-                      setUserFormData({
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        password: '',
-                        role: user.role,
-                        avatarUrl: user.avatarUrl || '',
-                      });
-                      setUserSaveError('');
-                      setShowUserModal(true);
-                    }}
-                    className="p-1 text-slate-400 hover:text-slate-800"
-                    title="Editar Usuário"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteUser(user.id, user.name)}
-                    className="p-1 text-slate-400 hover:text-rose-600"
-                    title="Excluir Usuário"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div className="truncate">
+                  <span className="font-bold text-slate-900 text-sm block truncate">{u.name}</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase inline-block mt-0.5">
+                    {u.role}
+                  </span>
                 </div>
               </div>
 
-              <div className="text-xs text-slate-600">
-                <span className="font-semibold block">{user.email}</span>
-                <span className="text-[10px] text-slate-400">Cadastrado em: {new Date(user.createdAt).toLocaleDateString('pt-BR')}</span>
+              <div className="text-xs text-slate-500 pt-1 border-t border-slate-200/60">
+                <span className="truncate block font-medium">{u.email}</span>
+                {u.createdAt && (
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Cadastrado em: {new Date(u.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                )}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Modal Cadastro/Edição de Usuário */}
-      {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">
-              {userFormData.id ? 'Editar Usuário Administrador' : 'Novo Usuário Administrador'}
+      {/* Seção Backup do Banco de Dados — Apenas Super Admin */}
+      {isSuper && (
+        <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center">
+              <Database className="w-5 h-5 text-emerald-600 mr-2" />
+              Backup Geral da Plataforma (Super Admin)
             </h2>
-
-            {userSaveError && (
-              <div className="p-3 bg-rose-100 text-rose-800 text-xs font-bold rounded-xl border border-rose-200">
-                {userSaveError}
-              </div>
-            )}
-
-            <form onSubmit={handleSaveUser} className="space-y-3 text-xs">
-              {/* Upload de Foto de Perfil */}
-              <div className="flex items-center space-x-4 p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                {userFormData.avatarUrl ? (
-                  <img
-                    src={userFormData.avatarUrl}
-                    alt="Preview Avatar"
-                    className="w-14 h-14 rounded-full object-cover shadow-md border-2 border-emerald-500"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
-                    {userFormData.name ? userFormData.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'WL'}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <label className="font-semibold block mb-1 text-slate-800">Foto do Perfil / Avatar</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploadingAvatar}
-                    className="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
-                  />
-                  {uploadingAvatar && <span className="text-[10px] text-emerald-600 font-bold block mt-1">Carregando imagem...</span>}
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">Nome Completo</label>
-                <input
-                  type="text"
-                  required
-                  value={userFormData.name}
-                  onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl"
-                  placeholder="ex: Wellington Luchesi"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">E-mail (Login)</label>
-                <input
-                  type="email"
-                  required
-                  value={userFormData.email}
-                  onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl"
-                  placeholder="ex: wluchesi@gmail.com"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">
-                  Senha {userFormData.id ? '(deixe em branco para manter a atual)' : ''}
-                </label>
-                <input
-                  type="password"
-                  required={!userFormData.id}
-                  value={userFormData.password}
-                  onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl"
-                  placeholder="••••••••"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">Função / Perfil</label>
-                <select
-                  value={userFormData.role}
-                  onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl font-bold"
-                >
-                  <option value="ADMIN">ADMIN — Administrador Irrestrito</option>
-                  <option value="ENGENHEIRO">ENGENHEIRO — Gestor de Obra</option>
-                  <option value="COMPRADOR">COMPRADOR — Cotações & Compras</option>
-                  <option value="FINANCEIRO">FINANCEIRO — Contas & Pagamentos</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowUserModal(false)}
-                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50"
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">
-                  Salvar Usuário
-                </button>
-              </div>
-            </form>
+            <p className="text-xs text-slate-500 mt-1">
+              Exportação de segurança completa do banco de dados relacional para preservação de dados.
+            </p>
+          </div>
+          <div className="flex items-center">
+            <a
+              href="/api/backup"
+              download="backup-gerenciador-de-obras.db"
+              className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition"
+            >
+              <Download className="w-4 h-4" />
+              <span>Fazer Download do Backup</span>
+            </a>
           </div>
         </div>
       )}

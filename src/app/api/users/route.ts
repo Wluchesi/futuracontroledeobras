@@ -3,9 +3,18 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { logAuditAction } from '@/lib/audit';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const companyId = searchParams.get('companyId');
+
+    const whereClause: any = {};
+    if (companyId) {
+      whereClause.companyId = companyId;
+    }
+
     const users = await prisma.user.findMany({
+      where: whereClause,
       select: {
         id: true,
         companyId: true,
@@ -27,13 +36,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, password, role, avatarUrl } = body;
+    const { companyId, name, email, password, role, avatarUrl } = body;
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'Nome, E-mail e Senha são obrigatórios.' }, { status: 400 });
     }
 
-    let company = await prisma.company.findFirst();
+    let company = companyId ? await prisma.company.findUnique({ where: { id: companyId } }) : null;
+    if (!company) {
+      company = await prisma.company.findFirst();
+    }
     if (!company) {
       company = await prisma.company.create({ data: { name: 'Empresa Principal' } });
     }

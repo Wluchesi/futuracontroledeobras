@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
 import { Building2, Plus, Users, Building, ShieldCheck, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function EmpresasPage() {
@@ -16,12 +16,12 @@ export default function EmpresasPage() {
 
   const router = useRouter();
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
+    if (user && !isSuperAdmin(user)) {
       router.push('/');
     }
   }, [user, router]);
 
-  if (user && user.role !== 'ADMIN') {
+  if (user && !isSuperAdmin(user)) {
     return null;
   }
 
