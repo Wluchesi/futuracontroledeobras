@@ -7,9 +7,15 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const accountPayableId = searchParams.get('accountPayableId');
+    const projectId = searchParams.get('projectId');
+
+    if (!accountPayableId && !projectId) {
+      return NextResponse.json([]);
+    }
 
     const where: any = {};
     if (accountPayableId) where.accountPayableId = accountPayableId;
+    if (projectId) where.accountPayable = { projectId };
 
     const payments = await prisma.payment.findMany({
       where,

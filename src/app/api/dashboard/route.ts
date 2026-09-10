@@ -6,8 +6,77 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
+    const companyId = searchParams.get('companyId');
 
-    const whereProject = projectId ? { projectId } : {};
+    let whereProject: any = null;
+
+    if (projectId) {
+      // Se passou projectId, validar se a obra existe (e se companyId foi passado, se pertence à empresa)
+      const project = await prisma.project.findFirst({
+        where: { id: projectId, ...(companyId ? { companyId } : {}) },
+      });
+
+      if (!project) {
+        return NextResponse.json({ error: 'Obra não encontrada para esta empresa.' }, { status: 404 });
+      }
+      whereProject = { projectId };
+    } else if (companyId) {
+      // Se não passou projectId mas passou companyId, buscar as obras dessa empresa
+      const companyProjects = await prisma.project.findMany({
+        where: { companyId },
+        select: { id: true },
+      });
+
+      if (companyProjects.length === 0) {
+        // Empresa sem obras: retornar dashboard limpo com zeros absolutos
+        return NextResponse.json({
+          kpis: {
+            totalContracted: 0,
+            totalPurchased: 0,
+            totalPaid: 0,
+            openAmount: 0,
+            overdueAmount: 0,
+            budgetBalance: 0,
+            percentConsumed: 0,
+            quotationSavings: 0,
+          },
+          alerts: [],
+          charts: {
+            chart1: [],
+            chart2: [],
+            chart3: [],
+            chart4: [],
+            chart5: [],
+            chart6: [],
+          },
+        });
+      }
+
+      whereProject = { projectId: { in: companyProjects.map((p) => p.id) } };
+    } else {
+      // Nenhum identificador passado: não pode vazar dados de outras empresas!
+      return NextResponse.json({
+        kpis: {
+          totalContracted: 0,
+          totalPurchased: 0,
+          totalPaid: 0,
+          openAmount: 0,
+          overdueAmount: 0,
+          budgetBalance: 0,
+          percentConsumed: 0,
+          quotationSavings: 0,
+        },
+        alerts: [],
+        charts: {
+          chart1: [],
+          chart2: [],
+          chart3: [],
+          chart4: [],
+          chart5: [],
+          chart6: [],
+        },
+      });
+    }
 
     // 1. Obter Itens do Orçamento com cotações
     const budgetItems = await prisma.budgetItem.findMany({

@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
+import { useAuth } from '@/context/AuthContext';
 import { Building2, Plus, Edit3, Search, Calendar, MapPin, Layers, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '@/lib/calculations';
 
 export default function ObrasPage() {
+  const { user } = useAuth();
   const { projects, refreshProjects, setSelectedProject } = useProject();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -56,20 +58,33 @@ export default function ObrasPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.companyId) {
+      alert('Sessão expirada ou empresa não identificada. Por favor faça login novamente.');
+      return;
+    }
+
     try {
       const url = '/api/projects';
       const method = formData.id ? 'PUT' : 'POST';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          companyId: user.companyId,
+        }),
       });
+
+      const data = await res.json();
       if (res.ok) {
         setShowModal(false);
         await refreshProjects();
+      } else {
+        alert(data.error || 'Erro ao salvar obra.');
       }
     } catch (err) {
       console.error(err);
+      alert('Erro de conexão ao salvar obra.');
     }
   };
 

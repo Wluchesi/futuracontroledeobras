@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Mail, MapPin, Edit3, MessageSquare, Trash2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Users, Plus, Search, Edit3, Trash2, Phone, Mail, MapPin, MessageSquare } from 'lucide-react';
 
 export default function FornecedoresPage() {
+  const { user } = useAuth();
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -27,14 +29,22 @@ export default function FornecedoresPage() {
   });
 
   const fetchSuppliers = async () => {
+    if (!user?.companyId) {
+      setSuppliers([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const res = await fetch('/api/suppliers');
+      const res = await fetch(`/api/suppliers?companyId=${user.companyId}`);
       if (res.ok) {
         setSuppliers(await res.json());
+      } else {
+        setSuppliers([]);
       }
     } catch (e) {
       console.error(e);
+      setSuppliers([]);
     } finally {
       setLoading(false);
     }
@@ -42,7 +52,7 @@ export default function FornecedoresPage() {
 
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [user?.companyId]);
 
   const filteredSuppliers = suppliers.filter((s) => {
     const matchesSearch =
@@ -55,19 +65,30 @@ export default function FornecedoresPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.companyId) {
+      alert('Sessão expirada. Faça login novamente.');
+      return;
+    }
     try {
       const method = formData.id ? 'PUT' : 'POST';
       const res = await fetch('/api/suppliers', {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          companyId: user.companyId,
+        }),
       });
       if (res.ok) {
         setShowModal(false);
         fetchSuppliers();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao salvar fornecedor.');
       }
     } catch (e) {
       console.error(e);
+      alert('Erro de conexão ao salvar fornecedor.');
     }
   };
 

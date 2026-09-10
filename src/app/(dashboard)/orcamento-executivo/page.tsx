@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
-import { Calculator, Plus, Search, Filter, Edit3, ShoppingCart, FileSpreadsheet } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Calculator, Plus, Search, Edit3, ShoppingCart, FileSpreadsheet } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 import Link from 'next/link';
 
@@ -24,6 +25,7 @@ const STANDARD_UNITS = [
 ];
 
 export default function OrcamentoExecutivoPage() {
+  const { user } = useAuth();
   const { selectedProject } = useProject();
   const [items, setItems] = useState<any[]>([]);
   const [costCenters, setCostCenters] = useState<any[]>([]);
@@ -52,10 +54,11 @@ export default function OrcamentoExecutivoPage() {
     if (!selectedProject) return;
     try {
       setLoading(true);
+      const supplierUrl = user?.companyId ? `/api/suppliers?companyId=${user.companyId}` : '/api/suppliers';
       const [resItems, resCc, resSup] = await Promise.all([
         fetch(`/api/budget-items?projectId=${selectedProject.id}`),
         fetch('/api/cost-centers'),
-        fetch('/api/suppliers'),
+        fetch(supplierUrl),
       ]);
       if (resItems.ok) setItems(await resItems.json());
       if (resCc.ok) setCostCenters(await resCc.json());
@@ -282,8 +285,15 @@ export default function OrcamentoExecutivoPage() {
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <Link
+                        href={`/cotacoes?itemId=${item.id}&action=quote`}
+                        className="p-1 text-amber-600 hover:text-amber-800 rounded transition"
+                        title="Cotar / Comparar Fornecedores"
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                      </Link>
+                      <Link
                         href={`/compras?action=new&budgetItemId=${item.id}`}
-                        className="p-1 text-emerald-600 hover:text-emerald-800 rounded"
+                        className="p-1 text-emerald-600 hover:text-emerald-800 rounded transition"
                         title="Efetuar Compra"
                       >
                         <ShoppingCart className="w-4 h-4" />

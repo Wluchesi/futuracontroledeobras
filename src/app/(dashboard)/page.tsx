@@ -2,20 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
+import { useAuth } from '@/context/AuthContext';
 import KpiCards from '@/components/dashboard/KpiCards';
 import BiCharts from '@/components/dashboard/BiCharts';
-import { AlertTriangle, HardHat, RefreshCw } from 'lucide-react';
+import { AlertTriangle, HardHat, RefreshCw, Building2, Plus } from 'lucide-react';
+import Link from 'next/link';
 
 export default function DashboardPage() {
-  const { selectedProject } = useProject();
+  const { user } = useAuth();
+  const { selectedProject, loading: projectsLoading } = useProject();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = async () => {
-    if (!selectedProject) return;
+    if (!user?.companyId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch(`/api/dashboard?projectId=${selectedProject.id}`);
+      const url = selectedProject?.id
+        ? `/api/dashboard?projectId=${selectedProject.id}&companyId=${user.companyId}`
+        : `/api/dashboard?companyId=${user.companyId}`;
+
+      const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -29,13 +40,38 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboard();
-  }, [selectedProject]);
+  }, [selectedProject?.id, user?.companyId]);
 
-  if (loading || !data) {
+  if (projectsLoading || (loading && !data)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mb-4" />
         <p className="text-sm font-semibold text-slate-600">Carregando indicadores do dashboard...</p>
+      </div>
+    );
+  }
+
+  // Estado Vazio: Empresa nova sem obras cadastradas
+  if (!selectedProject) {
+    return (
+      <div className="max-w-2xl mx-auto my-12 p-8 bg-white rounded-3xl border border-dashed border-slate-300 text-center space-y-4 shadow-xs">
+        <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+          <Building2 className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-slate-900">Nenhuma obra cadastrada ainda</h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Sua construtora ({user?.company?.name || 'Sua Empresa'}) ainda não possui obras cadastradas.
+            Cadastre sua primeira kitnet ou obra para começar a acompanhar orçamentos, compras e fluxo de caixa.
+          </p>
+        </div>
+        <Link
+          href="/obras"
+          className="inline-flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Cadastrar Primeira Obra</span>
+        </Link>
       </div>
     );
   }

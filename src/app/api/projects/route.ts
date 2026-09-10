@@ -2,9 +2,17 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logAuditAction } from '@/lib/audit';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const companyId = searchParams.get('companyId');
+
+    if (!companyId) {
+      return NextResponse.json([]);
+    }
+
     const projects = await prisma.project.findMany({
+      where: { companyId },
       include: {
         _count: {
           select: {
@@ -25,23 +33,50 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, ownerClient, address, city, state, startDate, endDate, landArea, builtArea, unitsCount, description, status, exceedRule } = body;
+    const {
+      companyId,
+      name,
+      ownerClient,
+      address,
+      city,
+      state,
+      startDate,
+      endDate,
+      landArea,
+      builtArea,
+      unitsCount,
+      description,
+      status,
+      exceedRule,
+    } = body;
+
+    if (!companyId) {
+      return NextResponse.json({ error: 'ID da empresa é obrigatório.' }, { status: 400 });
+    }
 
     if (!name || !ownerClient) {
       return NextResponse.json({ error: 'Nome da obra e proprietário são obrigatórios.' }, { status: 400 });
     }
 
-    // Buscar primeira empresa para associar
-    let company = await prisma.company.findFirst();
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
     if (!company) {
-      company = await prisma.company.create({
-        data: { name: 'Empresa Principal' },
-      });
+      return NextResponse.json({ error: 'Empresa não encontrada.' }, { status: 404 });
+    }
+
+    // Validar limite de obras do plano SaaS
+    const currentProjectsCount = await prisma.project.count({ where: { companyId } });
+    if (company.maxProjects && currentProjectsCount >= company.maxProjects) {
+      return NextResponse.json(
+        {
+          error: `LIMITE DO PLANO ATINGIDO: O seu plano (${company.planName}) permite gerenciar no máximo ${company.maxProjects} obra(s). Faça upgrade na aba Planos para cadastrar mais obras.`,
+        },
+        { status: 403 }
+      );
     }
 
     const project = await prisma.project.create({
       data: {
-        companyId: company.id,
+        companyId,
         name,
         ownerClient,
         address: address || '',

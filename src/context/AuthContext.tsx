@@ -22,6 +22,13 @@ export interface UserSession {
   company?: CompanySession;
 }
 
+export const SUPER_ADMIN_EMAILS = ['wluchesi@gmail.com', 'cinzialuchesi@gmail.com'];
+
+export function isSuperAdmin(user?: UserSession | null): boolean {
+  if (!user?.email) return false;
+  return SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase().trim());
+}
+
 interface AuthContextType {
   user: UserSession | null;
   loading: boolean;

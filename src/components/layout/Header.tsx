@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
-import { useAuth } from '@/context/AuthContext';
-import { Building2, Bell, AlertTriangle, Plus, ChevronDown, CheckCircle, Zap, ShieldCheck, Users, Layers } from 'lucide-react';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
+import { Building2, Bell, AlertTriangle, Plus, ChevronDown, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Header() {
@@ -15,12 +15,13 @@ export default function Header() {
   const [showCompanyMenu, setShowCompanyMenu] = useState(false);
 
   const currentCompany = user?.company;
+  const isSuper = isSuperAdmin(user);
 
   useEffect(() => {
     async function fetchAlerts() {
-      if (!selectedProject) return;
+      if (!selectedProject || !user?.companyId) return;
       try {
-        const res = await fetch(`/api/dashboard?projectId=${selectedProject.id}`);
+        const res = await fetch(`/api/dashboard?projectId=${selectedProject.id}&companyId=${user.companyId}`);
         if (res.ok) {
           const data = await res.json();
           setAlerts(data.alerts || []);
@@ -30,12 +31,13 @@ export default function Header() {
       }
     }
     fetchAlerts();
-  }, [selectedProject]);
+  }, [selectedProject, user?.companyId]);
 
   useEffect(() => {
     async function fetchCompanies() {
+      if (!isSuper) return;
       try {
-        const res = await fetch('/api/companies');
+        const res = await fetch(`/api/companies?userEmail=${encodeURIComponent(user?.email || '')}`);
         if (res.ok) {
           const data = await res.json();
           setCompanies(data.companies || []);
@@ -45,78 +47,93 @@ export default function Header() {
       }
     }
     fetchCompanies();
-  }, []);
+  }, [isSuper]);
 
   return (
     <header className="h-16 bg-slate-900 border-b border-slate-800 sticky top-0 z-30 px-4 lg:px-6 flex items-center justify-between shadow-lg text-slate-100">
       {/* SaaS Multi-Tenant & Active Project Selector */}
       <div className="flex items-center space-x-4 pl-10 lg:pl-0">
         
-        {/* Company Switcher Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowCompanyMenu(!showCompanyMenu)}
-            className="flex items-center space-x-2.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 rounded-xl transition shadow-xs cursor-pointer group"
-          >
-            <div className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg group-hover:scale-105 transition">
+        {/* Company Badge / Switcher: Apenas SuperAdmin pode alternar empresas */}
+        {isSuper ? (
+          <div className="relative">
+            <button
+              onClick={() => setShowCompanyMenu(!showCompanyMenu)}
+              className="flex items-center space-x-2.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 rounded-xl transition shadow-xs cursor-pointer group"
+            >
+              <div className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg group-hover:scale-105 transition">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] font-bold tracking-wider text-emerald-400 uppercase">Empresa (SuperAdmin)</span>
+                <span className="text-xs font-bold text-white truncate max-w-[140px] sm:max-w-[200px]">
+                  {currentCompany?.name || 'Sua Empresa'}
+                </span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {/* Company Switcher Modal (SuperAdmin Only) */}
+            {showCompanyMenu && (
+              <div className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95">
+                <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800">
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wide">Alternar Empresa</span>
+                  <Link
+                    href="/empresas"
+                    onClick={() => setShowCompanyMenu(false)}
+                    className="text-[11px] text-emerald-400 hover:underline font-semibold"
+                  >
+                    Gerenciar
+                  </Link>
+                </div>
+
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {companies.map((comp) => (
+                    <button
+                      key={comp.id}
+                      onClick={() => {
+                        updateCompanySession(comp);
+                        setShowCompanyMenu(false);
+                      }}
+                      className={`w-full text-left p-2.5 rounded-xl text-xs flex items-center justify-between transition ${
+                        currentCompany?.id === comp.id
+                          ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30'
+                          : 'text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      <span className="truncate">{comp.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-400 font-mono">
+                        {comp._count?.projects || 0} obras
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <Link
+                  href="/empresas?action=new"
+                  onClick={() => setShowCompanyMenu(false)}
+                  className="mt-2 w-full flex items-center justify-center space-x-1.5 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Cadastrar Nova Construtora</span>
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Usuário Comum / Cliente SaaS: Exibe apenas sua própria empresa de forma isolada */
+          <div className="flex items-center space-x-2.5 px-3 py-1.5 bg-slate-800 border border-slate-700/80 rounded-xl shadow-xs">
+            <div className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg">
               <Building2 className="w-4 h-4" />
             </div>
             <div className="flex flex-col text-left">
-              <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Empresa SaaS</span>
+              <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Construtora</span>
               <span className="text-xs font-bold text-white truncate max-w-[140px] sm:max-w-[200px]">
                 {currentCompany?.name || 'Sua Empresa'}
               </span>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-
-          {/* Company Switcher Modal */}
-          {showCompanyMenu && (
-            <div className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800">
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-wide">Alternar Empresa</span>
-                <Link
-                  href="/empresas"
-                  onClick={() => setShowCompanyMenu(false)}
-                  className="text-[11px] text-emerald-400 hover:underline font-semibold"
-                >
-                  Gerenciar
-                </Link>
-              </div>
-
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {companies.map((comp) => (
-                  <button
-                    key={comp.id}
-                    onClick={() => {
-                      updateCompanySession(comp);
-                      setShowCompanyMenu(false);
-                    }}
-                    className={`w-full text-left p-2.5 rounded-xl text-xs flex items-center justify-between transition ${
-                      currentCompany?.id === comp.id
-                        ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30'
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    <span className="truncate">{comp.name}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-400 font-mono">
-                      {comp._count?.projects || 0} obras
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <Link
-                href="/empresas?action=new"
-                onClick={() => setShowCompanyMenu(false)}
-                className="mt-2 w-full flex items-center justify-center space-x-1.5 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Cadastrar Nova Construtora</span>
-              </Link>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Separator Divider */}
         <div className="hidden sm:block h-6 w-px bg-slate-800" />
@@ -125,20 +142,30 @@ export default function Header() {
         <div className="hidden md:flex items-center space-x-2">
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Obra:</span>
           <div className="relative">
-            <select
-              value={selectedProject?.id || ''}
-              onChange={(e) => {
-                const found = projects.find((p) => p.id === e.target.value);
-                if (found) setSelectedProject(found);
-              }}
-              className="appearance-none bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-1.5 font-semibold text-white text-xs pr-7 cursor-pointer focus:outline-hidden hover:border-emerald-500 transition"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            {projects.length === 0 ? (
+              <select
+                value=""
+                disabled
+                className="appearance-none bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-1.5 font-semibold text-slate-400 text-xs pr-7 cursor-not-allowed"
+              >
+                <option value="">Nenhuma obra cadastrada</option>
+              </select>
+            ) : (
+              <select
+                value={selectedProject?.id || ''}
+                onChange={(e) => {
+                  const found = projects.find((p) => p.id === e.target.value);
+                  if (found) setSelectedProject(found);
+                }}
+                className="appearance-none bg-slate-800 border border-slate-700/80 rounded-xl px-3 py-1.5 font-semibold text-white text-xs pr-7 cursor-pointer focus:outline-hidden hover:border-emerald-500 transition"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>

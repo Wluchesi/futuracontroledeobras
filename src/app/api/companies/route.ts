@@ -1,9 +1,27 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+const SUPER_ADMINS = ['wluchesi@gmail.com', 'cinzialuchesi@gmail.com'];
+
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const userEmail = searchParams.get('userEmail');
+    const companyId = searchParams.get('companyId');
+
+    const isSuper = userEmail && SUPER_ADMINS.includes(userEmail.toLowerCase().trim());
+
+    const where: any = {};
+    if (!isSuper) {
+      if (companyId) {
+        where.id = companyId;
+      } else {
+        return NextResponse.json({ success: true, companies: [] });
+      }
+    }
+
     const companies = await prisma.company.findMany({
+      where,
       include: {
         _count: {
           select: {

@@ -10,8 +10,11 @@ export async function GET(request: Request) {
     const costCenterId = searchParams.get('costCenterId');
     const supplierId = searchParams.get('supplierId');
 
-    const where: any = {};
-    if (projectId) where.projectId = projectId;
+    if (!projectId) {
+      return NextResponse.json([]);
+    }
+
+    const where: any = { projectId };
     if (costCenterId) where.costCenterId = costCenterId;
     if (supplierId) where.supplierId = supplierId;
 

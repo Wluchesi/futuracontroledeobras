@@ -7,17 +7,23 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
 
-    const where: any = {};
-    if (projectId) where.projectId = projectId;
+    if (!projectId) {
+      return NextResponse.json([]);
+    }
+
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) {
+      return NextResponse.json([]);
+    }
 
     const accountsPayable = await prisma.accountPayable.findMany({
-      where,
+      where: { projectId },
       include: { supplier: true, costCenter: true },
       orderBy: { dueDate: 'asc' },
     });
 
-    const bankAccount = await prisma.bankAccount.findFirst();
-    const initialBalance = bankAccount ? bankAccount.initialBalance : 100000;
+    const bankAccount = await prisma.bankAccount.findFirst({ where: { companyId: project.companyId } });
+    const initialBalance = bankAccount ? bankAccount.initialBalance : 0;
 
     let accumRealized = initialBalance;
     let accumProjected = initialBalance;

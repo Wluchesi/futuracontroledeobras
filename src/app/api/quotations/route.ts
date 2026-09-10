@@ -9,6 +9,10 @@ export async function GET(request: Request) {
     const budgetItemId = searchParams.get('budgetItemId');
     const projectId = searchParams.get('projectId');
 
+    if (!budgetItemId && !projectId) {
+      return NextResponse.json([]);
+    }
+
     const where: any = {};
     if (budgetItemId) where.budgetItemId = budgetItemId;
     if (projectId) where.projectId = projectId;
@@ -34,7 +38,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
-      budgetItemId,
+      budgetItemId: providedBudgetItemId,
+      newItem,
       projectId,
       supplierId,
       date,
@@ -51,12 +56,72 @@ export async function POST(request: Request) {
       isChosen,
     } = body;
 
-    if (!budgetItemId || !supplierId) {
-      return NextResponse.json({ error: 'Item do orçamento e Fornecedor são obrigatórios.' }, { status: 400 });
+    if (!supplierId) {
+      return NextResponse.json({ error: 'Fornecedor é obrigatório.' }, { status: 400 });
     }
 
-    const budgetItem = await prisma.budgetItem.findUnique({ where: { id: budgetItemId } });
-    if (!budgetItem) return NextResponse.json({ error: 'Item do orçamento não encontrado.' }, { status: 404 });
+    let resolvedBudgetItemId = providedBudgetItemId;
+    let budgetItem: any = null;
+
+    // Se não passou budgetItemId, mas passou dados para criar um novo item na hora
+    if (!resolvedBudgetItemId) {
+      const itemData = newItem || body;
+      const itemName = itemData.itemName;
+      let costCenterId = itemData.costCenterId;
+      const targetProjectId = projectId || itemData.projectId;
+
+      if (!targetProjectId || !itemName) {
+        return NextResponse.json(
+          { error: 'Obra e Nome do item são obrigatórios para criar um novo item no orçamento.' },
+          { status: 400 }
+        );
+      }
+
+      if (!costCenterId) {
+        const firstCc = await prisma.costCenter.findFirst({ where: { isActive: true }, orderBy: { code: 'asc' } });
+        costCenterId = firstCc?.id;
+      }
+
+      if (!costCenterId) {
+        return NextResponse.json({ error: 'Centro de custo é obrigatório.' }, { status: 400 });
+      }
+
+      const cc = await prisma.costCenter.findUnique({ where: { id: costCenterId } });
+      const stageName = itemData.stage || (cc ? `${cc.code}. ${cc.name}` : 'Etapa Geral');
+      const itemQty = Number(quantity || itemData.quantity) || 1;
+      const itemPrice = Number(unitPrice || itemData.unitPrice) || 0;
+
+      const count = await prisma.budgetItem.count({ where: { projectId: targetProjectId } });
+      const code = `ORC-${String(count + 1).padStart(4, '0')}`;
+
+      budgetItem = await prisma.budgetItem.create({
+        data: {
+          projectId: targetProjectId,
+          costCenterId,
+          code,
+          stage: stageName,
+          itemName,
+          description: itemData.description || null,
+          unit: itemData.unit || 'un',
+          quantity: itemQty,
+          contractedUnitPrice: isChosen ? itemPrice : 0,
+          contractedTotal: isChosen ? itemQty * itemPrice : 0,
+          purchasedTotal: 0,
+          paidTotal: 0,
+          balance: isChosen ? itemQty * itemPrice : 0,
+          chosenSupplierId: isChosen ? supplierId : null,
+          status: isChosen ? 'CONTRATADO' : 'PLANEJADO',
+          notes: notes || null,
+        },
+      });
+
+      resolvedBudgetItemId = budgetItem.id;
+    } else {
+      budgetItem = await prisma.budgetItem.findUnique({ where: { id: resolvedBudgetItemId } });
+      if (!budgetItem) return NextResponse.json({ error: 'Item do orçamento não encontrado.' }, { status: 404 });
+    }
+
+    const budgetItemId = resolvedBudgetItemId;
 
     const qty = Number(quantity) || budgetItem.quantity || 1;
     const price = Number(unitPrice) || 0;

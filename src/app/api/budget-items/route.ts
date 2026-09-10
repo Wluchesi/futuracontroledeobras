@@ -7,8 +7,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
 
-    const where: any = {};
-    if (projectId) where.projectId = projectId;
+    if (!projectId) {
+      return NextResponse.json([]);
+    }
+
+    const where = { projectId };
 
     const budgetItems = await prisma.budgetItem.findMany({
       where,
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
         paidTotal: 0,
         balance: contractedTotal,
         chosenSupplierId: chosenSupplierId || null,
-        status: 'PLANEJADO',
+        status: chosenSupplierId && unitPrice > 0 ? 'CONTRATADO' : 'PLANEJADO',
         notes,
       },
       include: {
@@ -105,6 +108,24 @@ export async function POST(request: Request) {
         chosenSupplier: true,
       },
     });
+
+    // Se fornecedor e preço foram informados, criar cotação vencedora automaticamente
+    if (chosenSupplierId && unitPrice > 0) {
+      await prisma.quotation.create({
+        data: {
+          budgetItemId: created.id,
+          projectId: created.projectId,
+          supplierId: chosenSupplierId,
+          quantity: qty > 0 ? qty : 1,
+          unitPrice: unitPrice,
+          finalPrice: contractedTotal,
+          paymentTerms: 'À vista',
+          deliveryDays: 0,
+          isChosen: true,
+          notes: notes || 'Cotação vinculada via Orçamento Executivo',
+        },
+      });
+    }
 
     await logAuditAction({
       action: 'CREATE',
@@ -135,6 +156,8 @@ export async function PUT(request: Request) {
     const paidTotal = data.paidTotal !== undefined ? Number(data.paidTotal) : prev.paidTotal;
     const balance = contractedTotal - paidTotal;
 
+    const statusToSet = data.status || (data.chosenSupplierId && unitPrice > 0 ? 'CONTRATADO' : prev.status);
+
     const updated = await prisma.budgetItem.update({
       where: { id },
       data: {
@@ -143,12 +166,47 @@ export async function PUT(request: Request) {
         contractedUnitPrice: unitPrice,
         contractedTotal,
         balance,
+        status: statusToSet,
       },
       include: {
         costCenter: true,
         chosenSupplier: true,
       },
     });
+
+    // Sincronizar cotação vencedora se fornecedor e preço estiverem definidos
+    if (updated.chosenSupplierId && unitPrice > 0) {
+      const existingChosen = await prisma.quotation.findFirst({
+        where: { budgetItemId: id, isChosen: true },
+      });
+
+      if (existingChosen) {
+        await prisma.quotation.update({
+          where: { id: existingChosen.id },
+          data: {
+            supplierId: updated.chosenSupplierId,
+            quantity: qty > 0 ? qty : 1,
+            unitPrice: unitPrice,
+            finalPrice: contractedTotal,
+          },
+        });
+      } else {
+        await prisma.quotation.create({
+          data: {
+            budgetItemId: id,
+            projectId: updated.projectId,
+            supplierId: updated.chosenSupplierId,
+            quantity: qty > 0 ? qty : 1,
+            unitPrice: unitPrice,
+            finalPrice: contractedTotal,
+            paymentTerms: 'À vista',
+            deliveryDays: 0,
+            isChosen: true,
+            notes: 'Cotação sincronizada via Orçamento Executivo',
+          },
+        });
+      }
+    }
 
     await logAuditAction({
       action: 'UPDATE',

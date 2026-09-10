@@ -2,9 +2,17 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logAuditAction } from '@/lib/audit';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const companyId = searchParams.get('companyId');
+
+    if (!companyId) {
+      return NextResponse.json([]);
+    }
+
     const suppliers = await prisma.supplier.findMany({
+      where: { companyId },
       include: {
         _count: {
           select: {
@@ -25,20 +33,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { corporateName, tradeName, taxId, contactPerson, phone, whatsapp, email, address, city, state, supplierType, notes } = body;
+    const { companyId, corporateName, tradeName, taxId, contactPerson, phone, whatsapp, email, address, city, state, supplierType, notes } = body;
+
+    if (!companyId) {
+      return NextResponse.json({ error: 'ID da empresa é obrigatório.' }, { status: 400 });
+    }
 
     if (!corporateName) {
       return NextResponse.json({ error: 'Razão social é obrigatória.' }, { status: 400 });
     }
 
-    let company = await prisma.company.findFirst();
-    if (!company) {
-      company = await prisma.company.create({ data: { name: 'Empresa Principal' } });
-    }
-
     const created = await prisma.supplier.create({
       data: {
-        companyId: company.id,
+        companyId,
         corporateName,
         tradeName,
         taxId,

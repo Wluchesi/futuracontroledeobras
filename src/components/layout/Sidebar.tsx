@@ -25,12 +25,11 @@ import {
   X,
   LogOut,
   Zap,
-  ShieldCheck,
   Building,
   UserCheck,
   Database,
 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
 
 const OPERATIONAL_MENU = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -49,13 +48,13 @@ const OPERATIONAL_MENU = [
 
 const SAAS_MENU = [
   { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS', adminOnly: true },
-  { href: '/empresas', label: 'Empresas (Tenants)', icon: Building, adminOnly: true },
+  { href: '/empresas', label: 'Empresas (Tenants)', icon: Building, superAdminOnly: true },
   { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck, adminOnly: true },
 ];
 
 const SYSTEM_MENU = [
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
-  { href: '/auditoria', label: 'Auditoria', icon: History, adminOnly: true },
+  { href: '/auditoria', label: 'Auditoria', icon: History, superAdminOnly: true },
   { href: '/importar-excel', label: 'Importar Excel', icon: FileUp },
 ];
 
@@ -64,6 +63,7 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const isSuper = isSuperAdmin(user);
 
   const userProfile = {
     name: user?.name || 'Usuário',
@@ -173,9 +173,11 @@ export default function Sidebar() {
           {isAdmin && (
             <div className="space-y-1 pt-2 border-t border-slate-800/60">
               {!collapsed && (
-                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-400">Plataforma SaaS</span>
+                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                  {isSuper ? 'Plataforma SaaS' : 'Gestão da Empresa'}
+                </span>
               )}
-              {SAAS_MENU.map(renderLink)}
+              {SAAS_MENU.filter((item: any) => !item.superAdminOnly || isSuper).map(renderLink)}
             </div>
           )}
 
@@ -184,7 +186,9 @@ export default function Sidebar() {
             {!collapsed && (
               <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Sistema</span>
             )}
-            {SYSTEM_MENU.filter(item => !item.adminOnly || isAdmin).map(renderLink)}
+            {SYSTEM_MENU.filter(
+              (item: any) => (!item.superAdminOnly || isSuper) && (!item.adminOnly || isAdmin)
+            ).map(renderLink)}
           </div>
 
         </nav>

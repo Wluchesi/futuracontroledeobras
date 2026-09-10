@@ -1,21 +1,63 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useProject } from '@/context/ProjectContext';
-import { FileSpreadsheet, Plus, CheckCircle, TrendingDown, Award, Edit3, Trash2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import {
+  FileSpreadsheet,
+  Plus,
+  CheckCircle,
+  TrendingDown,
+  Award,
+  Edit3,
+  Trash2,
+  Sparkles,
+  Layers,
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 
-export default function CotacoesPage() {
+const STANDARD_UNITS = [
+  'un',
+  'm²',
+  'm³',
+  'kg',
+  'm',
+  'L',
+  'saco',
+  'cx',
+  'verba',
+  'hrs',
+  'dia',
+  'mês',
+  'jg',
+];
+
+function CotacoesContent() {
+  const { user } = useAuth();
   const { selectedProject } = useProject();
+  const searchParams = useSearchParams();
+
   const [budgetItems, setBudgetItems] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [costCenters, setCostCenters] = useState<any[]>([]);
   const [selectedItemFilter, setSelectedItemFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
+  // Modo de inclusão: 'NEW' (cria o item no orçamento na hora) ou 'EXISTING' (vincula a item já cadastrado)
+  const [itemMode, setItemMode] = useState<'NEW' | 'EXISTING'>('NEW');
+
   const [formData, setFormData] = useState({
     id: '',
+    // Campos do Novo Item (modo NEW)
+    itemName: '',
+    costCenterId: '',
+    stage: '',
+    unit: 'un',
+    // Campo do Item Existente (modo EXISTING)
     budgetItemId: '',
+    // Campos da Cotação / Fornecedor
     supplierId: '',
     quantity: 1,
     unitPrice: 0,
@@ -25,21 +67,24 @@ export default function CotacoesPage() {
     deliveryDays: 3,
     paymentTerms: '30 dias',
     notes: '',
-    isChosen: false,
+    isChosen: true, // Padrão selecionado como vencedor para compra direta/rápida
   });
 
   const fetchData = async () => {
     if (!selectedProject) return;
     try {
       setLoading(true);
-      const [resBudget, resSuppliers] = await Promise.all([
+      const supplierUrl = user?.companyId ? `/api/suppliers?companyId=${user.companyId}` : '/api/suppliers';
+      const [resBudget, resSuppliers, resCc] = await Promise.all([
         fetch(`/api/budget-items?projectId=${selectedProject.id}`),
-        fetch('/api/suppliers'),
+        fetch(supplierUrl),
+        fetch('/api/cost-centers'),
       ]);
       if (resBudget.ok) setBudgetItems(await resBudget.json());
       if (resSuppliers.ok) setSuppliers(await resSuppliers.json());
+      if (resCc.ok) setCostCenters(await resCc.json());
     } catch (e) {
-      console.error(e);
+      console.error('Erro ao buscar dados de cotação:', e);
     } finally {
       setLoading(false);
     }
@@ -48,6 +93,41 @@ export default function CotacoesPage() {
   useEffect(() => {
     fetchData();
   }, [selectedProject]);
+
+  // Se vier parâmetro de URL (ex: redirecionado do Orçamento Executivo com ?itemId=...)
+  useEffect(() => {
+    const urlItemId = searchParams.get('itemId');
+    const urlAction = searchParams.get('action');
+
+    if (urlItemId) {
+      setSelectedItemFilter(urlItemId);
+      if (urlAction === 'quote' && budgetItems.length > 0) {
+        const found = budgetItems.find((i) => i.id === urlItemId);
+        if (found) {
+          setItemMode('EXISTING');
+          setFormData({
+            id: '',
+            itemName: found.itemName,
+            costCenterId: found.costCenterId,
+            stage: found.stage,
+            unit: found.unit,
+            budgetItemId: found.id,
+            supplierId: suppliers[0]?.id || '',
+            quantity: found.quantity || 1,
+            unitPrice: found.contractedUnitPrice || 0,
+            freight: 0,
+            discount: 0,
+            taxes: 0,
+            deliveryDays: 3,
+            paymentTerms: '30 dias',
+            notes: '',
+            isChosen: true,
+          });
+          setShowModal(true);
+        }
+      }
+    }
+  }, [searchParams, budgetItems, suppliers]);
 
   const filteredItems = selectedItemFilter
     ? budgetItems.filter((i) => i.id === selectedItemFilter)
@@ -83,8 +163,13 @@ export default function CotacoesPage() {
   };
 
   const handleEditQuotation = (q: any) => {
+    setItemMode('EXISTING');
     setFormData({
       id: q.id,
+      itemName: q.budgetItem?.itemName || '',
+      costCenterId: q.budgetItem?.costCenterId || '',
+      stage: q.budgetItem?.stage || '',
+      unit: q.budgetItem?.unit || 'un',
       budgetItemId: q.budgetItemId,
       supplierId: q.supplierId,
       quantity: q.quantity,
@@ -100,18 +185,131 @@ export default function CotacoesPage() {
     setShowModal(true);
   };
 
+  const openNewQuotationModal = (preselectedItemId?: string) => {
+    const firstCc = costCenters[0];
+    const defaultStage = firstCc ? `${firstCc.code}. ${firstCc.name}` : '01. Projetos';
+
+    if (preselectedItemId) {
+      const found = budgetItems.find((i) => i.id === preselectedItemId);
+      setItemMode('EXISTING');
+      setFormData({
+        id: '',
+        itemName: found?.itemName || '',
+        costCenterId: found?.costCenterId || firstCc?.id || '',
+        stage: found?.stage || defaultStage,
+        unit: found?.unit || 'un',
+        budgetItemId: preselectedItemId,
+        supplierId: suppliers[0]?.id || '',
+        quantity: found?.quantity || 1,
+        unitPrice: found?.contractedUnitPrice || 0,
+        freight: 0,
+        discount: 0,
+        taxes: 0,
+        deliveryDays: 3,
+        paymentTerms: '30 dias',
+        notes: '',
+        isChosen: true,
+      });
+    } else {
+      const shouldBeNew = budgetItems.length === 0 ? true : true;
+      setItemMode(shouldBeNew ? 'NEW' : 'EXISTING');
+      setFormData({
+        id: '',
+        itemName: '',
+        costCenterId: firstCc?.id || '',
+        stage: defaultStage,
+        unit: 'un',
+        budgetItemId: budgetItems[0]?.id || '',
+        supplierId: suppliers[0]?.id || '',
+        quantity: 1,
+        unitPrice: 0,
+        freight: 0,
+        discount: 0,
+        taxes: 0,
+        deliveryDays: 3,
+        paymentTerms: '30 dias',
+        notes: '',
+        isChosen: true,
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleCostCenterChange = (costCenterId: string) => {
+    const foundCc = costCenters.find((cc) => cc.id === costCenterId);
+    setFormData((prev) => ({
+      ...prev,
+      costCenterId,
+      stage: foundCc ? `${foundCc.code}. ${foundCc.name}` : prev.stage,
+    }));
+  };
+
   const handleSaveQuotation = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.supplierId) {
+      alert('Selecione um fornecedor para a cotação.');
+      return;
+    }
+
+    if (itemMode === 'NEW' && !formData.id) {
+      if (!formData.itemName.trim()) {
+        alert('Por favor, informe o nome do material ou serviço.');
+        return;
+      }
+      if (!formData.costCenterId) {
+        alert('Selecione um centro de custo / etapa para o item.');
+        return;
+      }
+    }
+
+    if (itemMode === 'EXISTING' && !formData.id && !formData.budgetItemId) {
+      alert('Selecione um item existente do orçamento.');
+      return;
+    }
+
     try {
-      const method = formData.id ? 'PUT' : 'POST';
+      const isEditing = Boolean(formData.id);
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const payload: any = {
+        id: formData.id || undefined,
+        projectId: selectedProject?.id,
+        supplierId: formData.supplierId,
+        quantity: Number(formData.quantity) || 1,
+        unitPrice: Number(formData.unitPrice) || 0,
+        freight: Number(formData.freight) || 0,
+        discount: Number(formData.discount) || 0,
+        taxes: Number(formData.taxes) || 0,
+        deliveryDays: Number(formData.deliveryDays) || 0,
+        paymentTerms: formData.paymentTerms,
+        notes: formData.notes,
+        isChosen: formData.isChosen,
+      };
+
+      if (!isEditing) {
+        if (itemMode === 'NEW') {
+          payload.newItem = {
+            itemName: formData.itemName.trim(),
+            costCenterId: formData.costCenterId,
+            stage: formData.stage,
+            unit: formData.unit,
+            quantity: Number(formData.quantity) || 1,
+            unitPrice: Number(formData.unitPrice) || 0,
+          };
+        } else {
+          payload.budgetItemId = formData.budgetItemId;
+        }
+      } else {
+        payload.budgetItemId = formData.budgetItemId;
+      }
+
       const res = await fetch('/api/quotations', {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          projectId: selectedProject?.id,
-        }),
+        body: JSON.stringify(payload),
       });
+
       if (res.ok) {
         setShowModal(false);
         fetchData();
@@ -125,6 +323,12 @@ export default function CotacoesPage() {
     }
   };
 
+  const calculatedFinalPrice =
+    Number(formData.quantity || 1) * Number(formData.unitPrice || 0) +
+    Number(formData.freight || 0) +
+    Number(formData.taxes || 0) -
+    Number(formData.discount || 0);
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
@@ -135,50 +339,59 @@ export default function CotacoesPage() {
             Matriz de Cotações & Comparação de Fornecedores
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Compare propostas por item, edite condições de pagamento e escolha a vencedora
+            Lance cotações diretas criando novos itens na hora ou compare múltiplos fornecedores por item
           </p>
         </div>
         <button
-          onClick={() => {
-            setFormData({
-              id: '',
-              budgetItemId: budgetItems[0]?.id || '',
-              supplierId: suppliers[0]?.id || '',
-              quantity: budgetItems[0]?.quantity || 1,
-              unitPrice: 0,
-              freight: 0,
-              discount: 0,
-              taxes: 0,
-              deliveryDays: 3,
-              paymentTerms: '30 dias',
-              notes: '',
-              isChosen: false,
-            });
-            setShowModal(true);
-          }}
-          className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-xs transition"
+          onClick={() => openNewQuotationModal()}
+          className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Cadastrar Cotação</span>
         </button>
       </div>
 
-      {/* Filtro por Item do Orçamento */}
-      <div className="glass-card p-4 rounded-2xl border border-slate-200">
-        <label className="text-xs font-bold text-slate-700 block mb-1">Filtrar por Item do Orçamento</label>
-        <select
-          value={selectedItemFilter}
-          onChange={(e) => setSelectedItemFilter(e.target.value)}
-          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden"
-        >
-          <option value="">Todos os Itens do Orçamento ({budgetItems.length})</option>
-          {budgetItems.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.code} — {item.itemName} ({item.quotations.length} cotação/ões)
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Filtro por Item do Orçamento (se houver itens) */}
+      {budgetItems.length > 0 && (
+        <div className="glass-card p-4 rounded-2xl border border-slate-200">
+          <label className="text-xs font-bold text-slate-700 block mb-1">Filtrar por Item do Orçamento</label>
+          <select
+            value={selectedItemFilter}
+            onChange={(e) => setSelectedItemFilter(e.target.value)}
+            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden"
+          >
+            <option value="">Todos os Itens do Orçamento ({budgetItems.length})</option>
+            {budgetItems.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.code} — {item.itemName} ({item.quotations?.length || 0} proposta/s)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Estado Vazio Amigável */}
+      {!loading && filteredItems.length === 0 && (
+        <div className="glass-card p-12 rounded-3xl border border-dashed border-slate-300 text-center space-y-4 max-w-xl mx-auto">
+          <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+            <Sparkles className="w-7 h-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Nenhuma cotação cadastrada nesta obra</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Você não precisa cadastrar nada no orçamento antes! Clique no botão abaixo para lançar sua primeira cotação
+              com o fornecedor e o item será criado automaticamente na hora.
+            </p>
+          </div>
+          <button
+            onClick={() => openNewQuotationModal()}
+            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Lançar Primeira Cotação</span>
+          </button>
+        </div>
+      )}
 
       {/* Matriz de Comparação Visual de Fornecedores */}
       <div className="space-y-6">
@@ -220,23 +433,7 @@ export default function CotacoesPage() {
                     return (
                       <div
                         key={index}
-                        onClick={() => {
-                          setFormData({
-                            id: '',
-                            budgetItemId: item.id,
-                            supplierId: suppliers[0]?.id || '',
-                            quantity: item.quantity,
-                            unitPrice: item.contractedUnitPrice || 0,
-                            freight: 0,
-                            discount: 0,
-                            taxes: 0,
-                            deliveryDays: 3,
-                            paymentTerms: '30 dias',
-                            notes: '',
-                            isChosen: false,
-                          });
-                          setShowModal(true);
-                        }}
+                        onClick={() => openNewQuotationModal(item.id)}
                         className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition group"
                       >
                         <Plus className="w-6 h-6 text-slate-400 group-hover:text-emerald-600 mb-2" />
@@ -278,14 +475,14 @@ export default function CotacoesPage() {
                       <div className="absolute top-3 right-3 flex items-center space-x-1">
                         <button
                           onClick={() => handleEditQuotation(q)}
-                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition"
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
                           title="Editar Cotação"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteQuotation(q.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition cursor-pointer"
                           title="Excluir Cotação"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -293,9 +490,9 @@ export default function CotacoesPage() {
                       </div>
 
                       <div className="font-bold text-slate-900 text-sm mt-2 pr-12">
-                        {q.supplier.tradeName || q.supplier.corporateName}
+                        {q.supplier?.tradeName || q.supplier?.corporateName || 'Fornecedor não identificado'}
                       </div>
-                      <span className="text-[11px] text-slate-500 block mb-2">{q.supplier.supplierType}</span>
+                      <span className="text-[11px] text-slate-500 block mb-2">{q.supplier?.supplierType || 'Geral'}</span>
 
                       <div className="space-y-1 text-xs text-slate-700 my-3">
                         <div className="flex justify-between">
@@ -304,11 +501,11 @@ export default function CotacoesPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-500">Frete / Impostos:</span>
-                          <span>{formatCurrency(q.freight + q.taxes)}</span>
+                          <span>{formatCurrency((q.freight || 0) + (q.taxes || 0))}</span>
                         </div>
                         <div className="flex justify-between text-emerald-700">
                           <span>Desconto:</span>
-                          <span>- {formatCurrency(q.discount)}</span>
+                          <span>- {formatCurrency(q.discount || 0)}</span>
                         </div>
                         <div className="flex justify-between font-extrabold text-sm border-t border-slate-200/80 pt-1 text-slate-900">
                           <span>Valor Final:</span>
@@ -324,7 +521,7 @@ export default function CotacoesPage() {
                       {!isChosen && (
                         <button
                           onClick={() => handleSelectWinningQuotation(q.id)}
-                          className="w-full py-1.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center space-x-1"
+                          className="w-full py-1.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center space-x-1 cursor-pointer"
                         >
                           <CheckCircle className="w-3.5 h-3.5" />
                           <span>Selecionar Esta Opção</span>
@@ -341,161 +538,276 @@ export default function CotacoesPage() {
 
       {/* Modal Nova / Editar Cotação */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">
-              {formData.id ? 'Editar Cotação' : 'Cadastrar Cotação de Fornecedor'}
-            </h2>
-            <form onSubmit={handleSaveQuotation} className="space-y-3 text-xs">
-              <div>
-                <label className="font-semibold block mb-1">Item do Orçamento</label>
-                <select
-                  value={formData.budgetItemId}
-                  onChange={(e) => {
-                    const found = budgetItems.find((i) => i.id === e.target.value);
-                    setFormData({
-                      ...formData,
-                      budgetItemId: e.target.value,
-                      quantity: found ? found.quantity : 1,
-                      unitPrice: found ? found.contractedUnitPrice : 0,
-                    });
-                  }}
-                  className="w-full p-2.5 border rounded-xl"
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-lg font-bold text-slate-900">
+                {formData.id ? 'Editar Cotação' : 'Cadastrar Cotação'}
+              </h2>
+            </div>
+
+            {/* Seletor de Modo: Criar Novo Item vs Vincular a Existente (Apenas para novas cotações) */}
+            {!formData.id && (
+              <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setItemMode('NEW')}
+                  className={`py-2 px-3 text-xs font-bold rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer ${
+                    itemMode === 'NEW'
+                      ? 'bg-white text-emerald-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  {budgetItems.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.code} — {b.itemName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">Fornecedor Cotado</label>
-                <select
-                  value={formData.supplierId}
-                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl"
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Novo Item na Hora</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemMode('EXISTING')}
+                  disabled={budgetItems.length === 0}
+                  className={`py-2 px-3 text-xs font-bold rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer ${
+                    itemMode === 'EXISTING'
+                      ? 'bg-white text-emerald-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed'
+                  }`}
                 >
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.tradeName || s.corporateName} ({s.supplierType})
-                    </option>
-                  ))}
-                </select>
+                  <Layers className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Vincular a Item Existente</span>
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveQuotation} className="space-y-3.5 text-xs">
+              {/* MODO 1: CRIAR NOVO ITEM NA HORA */}
+              {itemMode === 'NEW' && !formData.id && (
+                <div className="p-3.5 bg-emerald-50/50 border border-emerald-200/80 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-800 text-[11px] uppercase tracking-wider flex items-center">
+                      <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                      Dados do Novo Item para o Orçamento
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Nome do Material / Serviço *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.itemName}
+                      onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
+                      placeholder="Ex: Cimento CP-II 50kg, Areia Média, Mão de Obra de Pintura..."
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-emerald-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Centro de Custo / Etapa *</label>
+                      <select
+                        value={formData.costCenterId}
+                        onChange={(e) => handleCostCenterChange(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-emerald-500"
+                      >
+                        {costCenters.map((cc) => (
+                          <option key={cc.id} value={cc.id}>
+                            {cc.code} — {cc.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Unidade</label>
+                      <select
+                        value={formData.unit}
+                        onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-emerald-500"
+                      >
+                        {STANDARD_UNITS.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODO 2: VINCULAR A ITEM EXISTENTE */}
+              {(itemMode === 'EXISTING' || formData.id) && (
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Item do Orçamento Existente *</label>
+                  <select
+                    disabled={Boolean(formData.id)}
+                    value={formData.budgetItemId}
+                    onChange={(e) => {
+                      const found = budgetItems.find((i) => i.id === e.target.value);
+                      setFormData({
+                        ...formData,
+                        budgetItemId: e.target.value,
+                        quantity: found ? found.quantity : 1,
+                        unitPrice: found ? found.contractedUnitPrice : 0,
+                      });
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 disabled:opacity-75"
+                  >
+                    {budgetItems.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.code} — {b.itemName} ({b.stage})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* DADOS DA PROPOSTA / COTAÇÃO */}
+              <div className="pt-1 space-y-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Fornecedor Cotado *</label>
+                  <select
+                    value={formData.supplierId}
+                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-emerald-500"
+                  >
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.tradeName || s.corporateName} ({s.supplierType})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Quantidade</label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.01"
+                      required
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Preço Unit. (R$) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={formData.unitPrice}
+                      onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Frete (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.freight}
+                      onChange={(e) => setFormData({ ...formData, freight: Number(e.target.value) })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Desconto (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.discount}
+                      onChange={(e) => setFormData({ ...formData, discount: Number(e.target.value) })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Impostos (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.taxes}
+                      onChange={(e) => setFormData({ ...formData, taxes: Number(e.target.value) })}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Resumo do Valor Total Calculado */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                  <span className="font-bold text-slate-600 text-xs">Valor Total Calculado:</span>
+                  <span className="font-extrabold text-sm text-emerald-700">
+                    {formatCurrency(calculatedFinalPrice)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Prazo Entrega (dias)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.deliveryDays}
+                      onChange={(e) => setFormData({ ...formData, deliveryDays: Number(e.target.value) })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Condição de Pagamento</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.paymentTerms}
+                      onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                      placeholder="ex: À vista / 30 dias / 50% entrada"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Observações</label>
+                  <textarea
+                    rows={2}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600"
+                    placeholder="Detalhes adicionais, contato do vendedor..."
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2.5 p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="isChosenModal"
+                    checked={formData.isChosen}
+                    onChange={(e) => setFormData({ ...formData, isChosen: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded-sm cursor-pointer accent-emerald-600"
+                  />
+                  <label htmlFor="isChosenModal" className="font-bold text-emerald-900 cursor-pointer text-xs">
+                    Definir como proposta vencedora / compra contratada
+                  </label>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="font-semibold block mb-1">Qtd</label>
-                  <input
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Preço Unit. (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.unitPrice}
-                    onChange={(e) => setFormData({ ...formData, unitPrice: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Frete (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.freight}
-                    onChange={(e) => setFormData({ ...formData, freight: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-semibold block mb-1">Desconto (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.discount}
-                    onChange={(e) => setFormData({ ...formData, discount: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Impostos (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.taxes}
-                    onChange={(e) => setFormData({ ...formData, taxes: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-semibold block mb-1">Prazo Entrega (dias)</label>
-                  <input
-                    type="number"
-                    value={formData.deliveryDays}
-                    onChange={(e) => setFormData({ ...formData, deliveryDays: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Condição de Pagamento</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.paymentTerms}
-                    onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
-                    className="w-full p-2.5 border rounded-xl font-semibold"
-                    placeholder="ex: À vista / 30 dias / 50% entrada"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">Observações</label>
-                <textarea
-                  rows={2}
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full p-2 border rounded-xl text-slate-600"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="isChosenModal"
-                  checked={formData.isChosen}
-                  onChange={(e) => setFormData({ ...formData, isChosen: e.target.checked })}
-                  className="w-4 h-4 text-emerald-600 rounded-sm"
-                />
-                <label htmlFor="isChosenModal" className="font-semibold text-slate-700 cursor-pointer">
-                  Marcar esta proposta como a vencedora
-                </label>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-3">
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2.5 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">
-                  {formData.id ? 'Atualizar Cotação' : 'Salvar Cotação'}
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs transition cursor-pointer flex items-center space-x-1.5"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{formData.id ? 'Atualizar Cotação' : 'Salvar Cotação'}</span>
                 </button>
               </div>
             </form>
@@ -503,5 +815,13 @@ export default function CotacoesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CotacoesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-500">Carregando cotações...</div>}>
+      <CotacoesContent />
+    </Suspense>
   );
 }

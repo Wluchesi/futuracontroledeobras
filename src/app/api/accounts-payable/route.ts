@@ -9,8 +9,11 @@ export async function GET(request: Request) {
     const projectId = searchParams.get('projectId');
     const statusFilter = searchParams.get('status');
 
-    const where: any = {};
-    if (projectId) where.projectId = projectId;
+    if (!projectId) {
+      return NextResponse.json([]);
+    }
+
+    const where: any = { projectId };
 
     const payables = await prisma.accountPayable.findMany({
       where,

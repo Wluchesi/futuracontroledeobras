@@ -27,17 +27,27 @@ interface ProjectContextType {
   refreshProjects: () => Promise<void>;
 }
 
+import { useAuth } from './AuthContext';
+
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProjects = async () => {
+    if (!user?.companyId) {
+      setProjects([]);
+      setSelectedProject(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch('/api/projects');
+      const res = await fetch(`/api/projects?companyId=${user.companyId}`);
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
@@ -46,10 +56,17 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
             ? data.find((p: Project) => p.id === selectedProject.id) 
             : null;
           setSelectedProject(currentSelected || data[0]);
+        } else {
+          setSelectedProject(null);
         }
+      } else {
+        setProjects([]);
+        setSelectedProject(null);
       }
     } catch (e) {
       console.error('Failed to fetch projects', e);
+      setProjects([]);
+      setSelectedProject(null);
     } finally {
       setLoading(false);
     }
@@ -57,7 +74,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [user?.companyId]);
 
   return (
     <ProjectContext.Provider

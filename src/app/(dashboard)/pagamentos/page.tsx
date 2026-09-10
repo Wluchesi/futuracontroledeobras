@@ -15,14 +15,10 @@ export default function PagamentosPage() {
     if (!selectedProject) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/payments`);
+      const res = await fetch(`/api/payments?projectId=${selectedProject.id}`);
       if (res.ok) {
         const data = await res.json();
-        // Filtrar pagamentos das contas a pagar deste projeto
-        const projectPayments = data.filter(
-          (p: any) => p.accountPayable && p.accountPayable.projectId === selectedProject.id
-        );
-        setPayments(projectPayments);
+        setPayments(data);
       }
     } catch (e) {
       console.error(e);

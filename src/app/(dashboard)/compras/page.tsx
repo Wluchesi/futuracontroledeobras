@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useProject } from '@/context/ProjectContext';
-import { ShoppingCart, Plus, Search, AlertCircle, Edit3, Trash2, Zap, FileText } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ShoppingCart, Plus, Search, Edit3, Trash2, Zap, AlertCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/calculations';
 import { useSearchParams } from 'next/navigation';
 
 function ComprasContent() {
+  const { user } = useAuth();
   const { selectedProject } = useProject();
   const searchParams = useSearchParams();
   const defaultAction = searchParams.get('action');
@@ -43,10 +45,11 @@ function ComprasContent() {
     if (!selectedProject) return;
     try {
       setLoading(true);
+      const supplierUrl = user?.companyId ? `/api/suppliers?companyId=${user.companyId}` : '/api/suppliers';
       const [resPurchases, resBudget, resSuppliers] = await Promise.all([
         fetch(`/api/purchases?projectId=${selectedProject.id}`),
         fetch(`/api/budget-items?projectId=${selectedProject.id}`),
-        fetch('/api/suppliers'),
+        fetch(supplierUrl),
       ]);
 
       if (resPurchases.ok) setPurchases(await resPurchases.json());
