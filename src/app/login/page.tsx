@@ -125,11 +125,18 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
-          Sua construtora ainda não usa o Futura Gestão de Obras?{' '}
-          <a href="/cadastrar-empresa" className="text-emerald-400 font-bold hover:underline">
-            Cadastrar Minha Empresa
-          </a>
+        <div className="mt-6 pt-5 border-t border-slate-800 text-center space-y-2">
+          <p className="text-sm text-slate-300">
+            Sua construtora ainda não usa o Futura Gestão de Obras?
+          </p>
+          <div>
+            <a
+              href="/cadastrar-empresa"
+              className="inline-block text-base font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline transition"
+            >
+              Cadastrar Minha Empresa
+            </a>
+          </div>
         </div>
       </div>
     </div>
