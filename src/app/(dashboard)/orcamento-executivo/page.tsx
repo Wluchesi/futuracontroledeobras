@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
-import { Calculator, Plus, Search, Edit3, ShoppingCart, FileSpreadsheet } from 'lucide-react';
+import { Calculator, Plus, Search, Edit3, ShoppingCart, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 import Link from 'next/link';
 
@@ -120,6 +120,33 @@ export default function OrcamentoExecutivoPage() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteItem = async (id: string, itemName: string) => {
+    if (
+      !confirm(
+        `Deseja realmente remover o item "${itemName}" do orçamento? Esta ação também removerá as cotações vinculadas a ele.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/budget-items?id=${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (showModal && formData.id === id) {
+          setShowModal(false);
+        }
+        fetchBudget();
+      } else {
+        alert(data.error || 'Erro ao excluir item.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro de conexão ao excluir item.');
     }
   };
 
@@ -298,6 +325,13 @@ export default function OrcamentoExecutivoPage() {
                       >
                         <ShoppingCart className="w-4 h-4" />
                       </Link>
+                      <button
+                        onClick={() => handleDeleteItem(item.id, item.itemName)}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                        title="Excluir Item do Orçamento"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -473,17 +507,34 @@ export default function OrcamentoExecutivoPage() {
                 </select>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer">
-                  Salvar Item
-                </button>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                {formData.id ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteItem(formData.id, formData.itemName)}
+                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Excluir Item</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer text-xs transition"
+                  >
+                    Salvar Item
+                  </button>
+                </div>
               </div>
             </form>
           </div>

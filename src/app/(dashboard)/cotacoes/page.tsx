@@ -14,6 +14,8 @@ import {
   Trash2,
   Sparkles,
   Layers,
+  Search,
+  X,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 
@@ -42,6 +44,7 @@ function CotacoesContent() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [costCenters, setCostCenters] = useState<any[]>([]);
   const [selectedItemFilter, setSelectedItemFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
@@ -129,9 +132,29 @@ function CotacoesContent() {
     }
   }, [searchParams, budgetItems, suppliers]);
 
-  const filteredItems = selectedItemFilter
-    ? budgetItems.filter((i) => i.id === selectedItemFilter)
-    : budgetItems;
+  const filteredItems = budgetItems.filter((item) => {
+    const matchesDropdown = !selectedItemFilter || item.id === selectedItemFilter;
+    if (!matchesDropdown) return false;
+
+    if (!searchTerm.trim()) return true;
+
+    const term = searchTerm.toLowerCase().trim();
+    const matchesItem =
+      item.code?.toLowerCase().includes(term) ||
+      item.itemName?.toLowerCase().includes(term) ||
+      item.stage?.toLowerCase().includes(term) ||
+      item.notes?.toLowerCase().includes(term) ||
+      item.description?.toLowerCase().includes(term);
+
+    const matchesQuotations = (item.quotations || []).some((q: any) => {
+      const sName = (q.supplier?.tradeName || q.supplier?.corporateName || '').toLowerCase();
+      const qNotes = (q.notes || '').toLowerCase();
+      const qPayment = (q.paymentTerms || '').toLowerCase();
+      return sName.includes(term) || qNotes.includes(term) || qPayment.includes(term);
+    });
+
+    return matchesItem || matchesQuotations;
+  });
 
   const handleSelectWinningQuotation = async (quotationId: string) => {
     try {
@@ -149,16 +172,41 @@ function CotacoesContent() {
   };
 
   const handleDeleteQuotation = async (quotationId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta cotação?')) return;
+    if (!confirm('Tem certeza que deseja remover esta cotação?')) return;
     try {
       const res = await fetch(`/api/quotations?id=${quotationId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
+        if (showModal && formData.id === quotationId) {
+          setShowModal(false);
+        }
         fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao excluir cotação.');
       }
     } catch (e) {
       console.error(e);
+      alert('Erro de conexão ao excluir cotação.');
+    }
+  };
+
+  const handleDeleteBudgetItem = async (budgetItemId: string, itemName: string) => {
+    if (!confirm(`Deseja realmente remover o item "${itemName}" e todas as suas cotações vinculadas?`)) return;
+    try {
+      const res = await fetch(`/api/budget-items?id=${budgetItemId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert(data.error || 'Erro ao excluir item.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro de conexão ao excluir item.');
     }
   };
 
@@ -351,22 +399,54 @@ function CotacoesContent() {
         </button>
       </div>
 
-      {/* Filtro por Item do Orçamento (se houver itens) */}
+      {/* Barra de Pesquisa por Palavra-Chave & Filtros */}
       {budgetItems.length > 0 && (
-        <div className="glass-card p-4 rounded-2xl border border-slate-200">
-          <label className="text-xs font-bold text-slate-700 block mb-1">Filtrar por Item do Orçamento</label>
-          <select
-            value={selectedItemFilter}
-            onChange={(e) => setSelectedItemFilter(e.target.value)}
-            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden"
-          >
-            <option value="">Todos os Itens do Orçamento ({budgetItems.length})</option>
-            {budgetItems.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.code} — {item.itemName} ({item.quotations?.length || 0} proposta/s)
-              </option>
-            ))}
-          </select>
+        <div className="glass-card p-4 rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Busca por Palavra-Chave */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Pesquisar por Palavra-Chave
+            </label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por material, código, fornecedor ou observação..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white transition"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                  title="Limpar busca"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filtro por Item Específico do Orçamento */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Filtrar por Item do Orçamento
+            </label>
+            <select
+              value={selectedItemFilter}
+              onChange={(e) => setSelectedItemFilter(e.target.value)}
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white transition"
+            >
+              <option value="">Todos os Itens do Orçamento ({budgetItems.length})</option>
+              {budgetItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} — {item.itemName} ({item.quotations?.length || 0} proposta/s)
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
@@ -377,19 +457,32 @@ function CotacoesContent() {
             <Sparkles className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-800">Nenhuma cotação cadastrada nesta obra</h3>
+            <h3 className="text-base font-bold text-slate-800">
+              {searchTerm ? 'Nenhum resultado encontrado para esta busca' : 'Nenhuma cotação cadastrada nesta obra'}
+            </h3>
             <p className="text-xs text-slate-500 mt-1">
-              Você não precisa cadastrar nada no orçamento antes! Clique no botão abaixo para lançar sua primeira cotação
-              com o fornecedor e o item será criado automaticamente na hora.
+              {searchTerm
+                ? 'Tente buscar por outro termo, limpar a busca ou selecionar outro item.'
+                : 'Você não precisa cadastrar nada no orçamento antes! Clique no botão abaixo para lançar sua primeira cotação com o fornecedor e o item será criado automaticamente na hora.'}
             </p>
           </div>
-          <button
-            onClick={() => openNewQuotationModal()}
-            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Lançar Primeira Cotação</span>
-          </button>
+          {searchTerm ? (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              <span>Limpar Filtro de Busca</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => openNewQuotationModal()}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Lançar Primeira Cotação</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -416,13 +509,29 @@ function CotacoesContent() {
                   <span className="text-xs text-slate-500">
                     Etapa: {item.stage} • Quantidade: {item.quantity} {item.unit}
                   </span>
+                  {item.notes && (
+                    <div className="mt-1 text-xs text-slate-600 italic">
+                      <span className="font-semibold text-slate-700 not-italic">Obs do item: </span>
+                      {item.notes}
+                    </div>
+                  )}
                 </div>
-                {economy > 0 && (
-                  <div className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs border border-emerald-300">
-                    <TrendingDown className="w-4 h-4 mr-1 text-emerald-600" />
-                    Economia de {formatCurrency(economy)} nesta cotação!
-                  </div>
-                )}
+                <div className="flex items-center space-x-2">
+                  {economy > 0 && (
+                    <div className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs border border-emerald-300">
+                      <TrendingDown className="w-4 h-4 mr-1 text-emerald-600" />
+                      Economia de {formatCurrency(economy)} nesta cotação!
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleDeleteBudgetItem(item.id, item.itemName)}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs"
+                    title="Remover este item e todas as suas cotações"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-[11px] text-slate-500 hover:text-rose-600">Excluir Item</span>
+                  </button>
+                </div>
               </div>
 
               {/* Matriz de 3 Colunas */}
@@ -483,7 +592,7 @@ function CotacoesContent() {
                         <button
                           onClick={() => handleDeleteQuotation(q.id)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition cursor-pointer"
-                          title="Excluir Cotação"
+                          title="Remover Cotação"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -513,9 +622,30 @@ function CotacoesContent() {
                         </div>
                       </div>
 
-                      <div className="text-[11px] text-slate-600 space-y-1 mb-3 bg-white/60 p-2 rounded-xl border border-slate-200/60">
-                        <div>⏱️ Prazo: <strong>{q.deliveryDays} dias úteis</strong></div>
-                        <div>💳 Condição: <strong className="text-emerald-700">{q.paymentTerms || 'A combinar'}</strong></div>
+                      {/* Quadro de Prazos, Condições e OBSERVAÇÕES no Quadro Principal */}
+                      <div className="text-[11px] text-slate-600 space-y-1.5 mb-3 bg-white/70 p-2.5 rounded-xl border border-slate-200/70">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">⏱️ Prazo:</span>
+                          <strong>{q.deliveryDays} dias úteis</strong>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">💳 Condição:</span>
+                          <strong className="text-emerald-700">{q.paymentTerms || 'A combinar'}</strong>
+                        </div>
+
+                        {/* Observações da Cotação com destaque */}
+                        {q.notes ? (
+                          <div className="pt-2 mt-1 border-t border-slate-200/70 text-slate-700">
+                            <span className="font-bold text-slate-800 block mb-0.5">📝 Observações:</span>
+                            <p className="italic bg-amber-50/80 border border-amber-200/60 p-2 rounded-lg text-amber-900 leading-snug whitespace-pre-wrap">
+                              {q.notes}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="pt-1.5 mt-0.5 border-t border-slate-200/50 text-[10px] text-slate-400 italic">
+                            Sem observações registradas
+                          </div>
+                        )}
                       </div>
 
                       {!isChosen && (
@@ -794,21 +924,35 @@ function CotacoesContent() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs transition cursor-pointer flex items-center space-x-1.5"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>{formData.id ? 'Atualizar Cotação' : 'Salvar Cotação'}</span>
-                </button>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                {formData.id ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteQuotation(formData.id)}
+                    className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs transition cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Remover Cotação</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2.5 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition cursor-pointer text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs transition cursor-pointer flex items-center space-x-1.5 text-xs"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>{formData.id ? 'Atualizar Cotação' : 'Salvar Cotação'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

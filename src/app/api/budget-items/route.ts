@@ -222,3 +222,41 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) return NextResponse.json({ error: 'ID do item é obrigatório.' }, { status: 400 });
+
+    const item = await prisma.budgetItem.findUnique({
+      where: { id },
+      include: { purchases: true },
+    });
+
+    if (!item) return NextResponse.json({ error: 'Item não encontrado.' }, { status: 404 });
+
+    if (item.purchases && item.purchases.length > 0) {
+      return NextResponse.json(
+        { error: `Não é possível excluir este item pois já existem ${item.purchases.length} compra(s) vinculada(s) a ele.` },
+        { status: 400 }
+      );
+    }
+
+    await prisma.budgetItem.delete({ where: { id } });
+
+    await logAuditAction({
+      action: 'DELETE',
+      entityName: 'BudgetItem',
+      entityId: id,
+      previousValue: item,
+      details: `Item de orçamento ${item.code} - ${item.itemName} excluído com sucesso.`,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting budget item:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
