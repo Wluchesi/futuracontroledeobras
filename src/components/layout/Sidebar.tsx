@@ -49,7 +49,7 @@ const OPERATIONAL_MENU = [
 
 const SAAS_MENU = [
   { href: '/admin-geral', label: 'Administração Geral', icon: ShieldCheck, badge: 'Master', superAdminOnly: true },
-  { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS', roles: ['ADMIN'] },
+  { href: '/planos', label: 'Planos & Assinatura', icon: Zap, roles: ['ADMIN'] },
   { href: '/empresas', label: 'Empresas (Tenants)', icon: Building, superAdminOnly: true },
   { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck, roles: ['ADMIN'] },
 ];

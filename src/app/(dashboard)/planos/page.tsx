@@ -10,8 +10,8 @@ import { useRouter } from 'next/navigation';
 const PLANS = [
   {
     id: 'Gratuito',
-    name: 'Plano Gratuito (Isca)',
-    badge: 'Degustação / Teste',
+    name: 'Plano Gratuito',
+    badge: '',
     price: 0,
     priceLabel: 'R$ 0',
     period: '/mês',
@@ -131,6 +131,23 @@ export default function PlanosPage() {
 
   const isSuper = isSuperAdmin(user);
   const activePlans = (isSuper && showTestPlan) ? [...PLANS, TEST_PLAN] : PLANS;
+
+  const checkIsCurrentPlan = (planId: string) => {
+    const norm = (currentPlan || '').toLowerCase();
+    if (planId === 'Gratuito') {
+      return norm.includes('gratuito') || (!norm.includes('pro') && !norm.includes('premium') && !norm.includes('teste'));
+    }
+    if (planId === 'Pro') {
+      return norm.includes('pro') && !norm.includes('premium');
+    }
+    if (planId === 'Premium') {
+      return norm.includes('premium') && !norm.includes('teste');
+    }
+    if (planId === 'Teste1Real') {
+      return norm.includes('teste');
+    }
+    return norm.includes(planId.toLowerCase());
+  };
 
   const handleSelectPlan = (plan: typeof PLANS[0] | typeof TEST_PLAN) => {
     setMessage(null);
@@ -284,49 +301,61 @@ export default function PlanosPage() {
         </div>
       )}
 
-      {/* Grid de Planos SaaS */}
+      {/* Grid de Planos */}
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${activePlans.length} gap-6`}>
         {activePlans.map((plan: any) => {
-          const isCurrent = currentPlan.toLowerCase().includes(plan.id.toLowerCase());
+          const isCurrent = checkIsCurrentPlan(plan.id);
           const isTestPlanCard = plan.isTest;
 
           return (
             <div
               key={plan.id}
               className={`rounded-3xl border p-6 flex flex-col justify-between transition-all duration-300 relative ${
-                isTestPlanCard
+                isCurrent
+                  ? 'ring-4 ring-emerald-500/50 border-2 border-emerald-500 shadow-2xl scale-[1.02] ' +
+                    (plan.isPopular || isTestPlanCard
+                      ? 'bg-slate-900 shadow-emerald-950/60'
+                      : 'bg-emerald-50/40 shadow-emerald-500/10')
+                  : isTestPlanCard
                   ? 'bg-slate-900/90 border-amber-500/60 shadow-xl ring-2 ring-amber-500/20'
                   : plan.isPopular
-                  ? 'bg-slate-900 border-emerald-500/50 shadow-2xl shadow-emerald-950/50 scale-102'
+                  ? 'bg-slate-900 border-emerald-500/50 shadow-2xl shadow-emerald-950/50'
                   : 'bg-white border-slate-200 shadow-lg hover:border-slate-300'
               }`}
             >
-              {plan.isPopular && (
+              {isCurrent ? (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-500 text-slate-950 text-[10px] font-extrabold tracking-wider uppercase rounded-full shadow-lg flex items-center space-x-1.5 z-10">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>SEU PLANO ATUAL</span>
+                </div>
+              ) : plan.isPopular ? (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-500 text-slate-950 text-[10px] font-extrabold tracking-wider uppercase rounded-full shadow-md">
                   RECOMENDADO PARA KITNETEIROS
                 </div>
-              )}
-
-              {isTestPlanCard && (
+              ) : isTestPlanCard ? (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-amber-500 text-slate-950 text-[10px] font-extrabold tracking-wider uppercase rounded-full shadow-md">
                   TESTE DE GATEWAY R$ 1,00
                 </div>
-              )}
+              ) : null}
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                    isTestPlanCard
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                      : plan.isPopular
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-slate-100 text-slate-700'
-                  }`}>
-                    {plan.badge}
-                  </span>
+                <div className="flex items-center justify-between min-h-[28px]">
+                  {plan.badge ? (
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                      isTestPlanCard
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : plan.isPopular
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {plan.badge}
+                    </span>
+                  ) : (
+                    <div />
+                  )}
                   {isCurrent && (
-                    <span className="inline-flex items-center text-xs font-extrabold text-emerald-500">
-                      <Award className="w-4 h-4 mr-1" />
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-600 border border-emerald-500/40">
+                      <Award className="w-3.5 h-3.5 mr-1 text-emerald-500" />
                       PLANO ATIVO
                     </span>
                   )}
@@ -366,20 +395,23 @@ export default function PlanosPage() {
                 <button
                   disabled={isCurrent || loadingPlan === plan.id}
                   onClick={() => handleSelectPlan(plan)}
-                  className={`w-full py-3.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center space-x-2 cursor-pointer ${
+                  className={`w-full py-3.5 px-4 rounded-xl text-xs font-extrabold transition flex items-center justify-center space-x-2 ${
                     isCurrent
-                      ? 'bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700'
+                      ? 'bg-emerald-600 text-white cursor-default shadow-md shadow-emerald-600/30'
                       : isTestPlanCard
-                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20'
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 cursor-pointer'
                       : plan.isPopular
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20'
-                      : 'bg-slate-900 hover:bg-slate-800 text-white'
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 cursor-pointer'
+                      : 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
                   }`}
                 >
                   {loadingPlan === plan.id ? (
                     <Loader2 className="w-4 h-4 animate-spin text-current" />
                   ) : isCurrent ? (
-                    <span>Seu Plano Atual</span>
+                    <span className="flex items-center space-x-1.5">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Seu Plano Atual em Uso</span>
+                    </span>
                   ) : (
                     <>
                       <Lock className="w-3.5 h-3.5" />
