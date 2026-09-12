@@ -2,6 +2,31 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import QRCode from 'qrcode';
 
+function formatMercadoPagoCardError(statusDetail?: string, rawMessage?: string): string {
+  switch (statusDetail) {
+    case 'cc_rejected_high_risk':
+      return 'Recusado pelo sistema de prevenção a fraudes do Mercado Pago (cc_rejected_high_risk). Isso ocorre quando o titular tenta pagar para si mesmo ou por regras de segurança da adquirente. Pague com PIX para aprovação imediata ou utilize o Checkout Oficial do Mercado Pago.';
+    case 'cc_rejected_bad_filled_card_number':
+      return 'Número de cartão inválido. Verifique os números digitados.';
+    case 'cc_rejected_bad_filled_date':
+      return 'Data de validade do cartão incorreta ou vencida.';
+    case 'cc_rejected_bad_filled_security_code':
+      return 'Código de segurança (CVV) incorreto.';
+    case 'cc_rejected_insufficient_amount':
+      return 'Saldo ou limite insuficiente no cartão de crédito.';
+    case 'cc_rejected_call_for_authorize':
+      return 'Pagamento não autorizado pelo banco emissor. Ligue para a central do seu cartão para autorizar.';
+    case 'cc_rejected_card_disabled':
+      return 'O cartão informado está bloqueado ou inativo.';
+    case 'cc_rejected_duplicated_payment':
+      return 'Transação duplicada. Já existe um pagamento recente idêntico.';
+    case 'cc_rejected_max_attempts':
+      return 'Limite de tentativas excedido. Tente novamente mais tarde ou use o PIX.';
+    default:
+      return rawMessage || statusDetail || 'Pagamento recusado pela operadora do cartão.';
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -272,23 +297,24 @@ export async function POST(request: Request) {
 
               const payData = await payRes.json();
 
-              if (payRes.ok && (payData.status === 'approved' || payData.status === 'in_process')) {
-                isApproved = true;
-                transactionId = String(payData.id);
-                mpMessage = `Pagamento nº ${payData.id} processado com sucesso!`;
-              } else {
-                console.warn('Mercado Pago Cartão Erro:', payData);
-                return NextResponse.json({
-                  error: payData.message || payData.status_detail || 'Pagamento recusado pela operadora.',
-                  checkoutUrl,
-                }, { status: 400 });
-              }
+            if (payRes.ok && (payData.status === 'approved' || payData.status === 'in_process')) {
+              isApproved = true;
+              transactionId = String(payData.id);
+              mpMessage = `Pagamento nº ${payData.id} processado com sucesso!`;
+            } else {
+              console.warn('Mercado Pago Cartão Erro:', payData);
+              const friendlyError = formatMercadoPagoCardError(payData.status_detail, payData.message);
+              return NextResponse.json({
+                error: friendlyError,
+                checkoutUrl,
+              }, { status: 400 });
             }
           }
-        } catch (cardErr) {
-          console.error('Erro na API de Cartão do Mercado Pago:', cardErr);
         }
+      } catch (cardErr) {
+        console.error('Erro na API de Cartão do Mercado Pago:', cardErr);
       }
+    }
 
       // Se não aprovou de forma transparente pelo gateway, NÃO libera o plano
       if (!isApproved) {

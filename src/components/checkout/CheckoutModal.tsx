@@ -21,6 +21,7 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string>('');
 
   // Formulário de Cartão de Crédito
   const [cardForm, setCardForm] = useState({
@@ -51,6 +52,7 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
       });
 
       const data = await res.json().catch(() => null);
+      if (data?.checkoutUrl) setCheckoutUrl(data.checkoutUrl);
 
       if (res.ok && data?.success) {
         setPixData({
@@ -135,6 +137,8 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
       });
 
       const data = await res.json().catch(() => null);
+      if (data?.checkoutUrl) setCheckoutUrl(data.checkoutUrl);
+
       if (res.ok && data?.success) {
         if (data.company) {
           updateCompanySession(data.company);
@@ -244,8 +248,35 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
             </div>
 
             {error && (
-              <div className="p-3 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl font-medium">
-                ❌ {error}
+              <div className="p-3.5 bg-rose-950/60 border border-rose-800 text-rose-200 text-xs rounded-2xl font-medium space-y-2.5">
+                <div className="flex items-start space-x-2">
+                  <span className="text-sm">❌</span>
+                  <span className="flex-1 leading-relaxed">{error}</span>
+                </div>
+                {checkoutUrl && (
+                  <div className="pt-2 border-t border-rose-800/60 flex flex-col sm:flex-row gap-2">
+                    <a
+                      href={checkoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 shadow-md"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Pagar no Checkout Oficial</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentMethod('PIX');
+                        setError(null);
+                      }}
+                      className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 border border-slate-700 cursor-pointer"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Pagar via PIX</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
