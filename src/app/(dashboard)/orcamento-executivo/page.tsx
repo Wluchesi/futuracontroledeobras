@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
-import { Calculator, Plus, Search, Edit3, ShoppingCart, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { Calculator, Plus, Search, Edit3, ShoppingCart, FileSpreadsheet, Trash2, Copy } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 import Link from 'next/link';
 
@@ -34,6 +34,7 @@ export default function OrcamentoExecutivoPage() {
   const [selectedCc, setSelectedCc] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [customUnitMode, setCustomUnitMode] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -180,6 +181,27 @@ export default function OrcamentoExecutivoPage() {
     }
   };
 
+  const handleDuplicateItem = (item: any) => {
+    const nextCode = `ORC-${String(items.length + 1).padStart(4, '0')}`;
+    setFormData({
+      id: '',
+      code: nextCode,
+      costCenterId: item.costCenterId,
+      stage: item.stage,
+      itemName: `${item.itemName} (Cópia)`,
+      description: item.description || '',
+      unit: item.unit,
+      quantity: item.quantity,
+      contractedUnitPrice: item.contractedUnitPrice,
+      chosenSupplierId: item.chosenSupplierId || '',
+      notes: item.notes || '',
+    });
+    setIsDuplicating(true);
+    setCustomUnitMode(!STANDARD_UNITS.includes(item.unit));
+    setShowNewSupplierBox(false);
+    setShowModal(true);
+  };
+
   const handleDeleteItem = async (id: string, itemName: string) => {
     if (
       !confirm(
@@ -238,6 +260,7 @@ export default function OrcamentoExecutivoPage() {
               chosenSupplierId: '',
               notes: '',
             });
+            setIsDuplicating(false);
             setCustomUnitMode(false);
             setShowNewSupplierBox(false);
             setShowModal(true);
@@ -361,6 +384,7 @@ export default function OrcamentoExecutivoPage() {
                             chosenSupplierId: item.chosenSupplierId || '',
                             notes: item.notes || '',
                           });
+                          setIsDuplicating(false);
                           setCustomUnitMode(!STANDARD_UNITS.includes(item.unit));
                           setShowNewSupplierBox(false);
                           setShowModal(true);
@@ -369,6 +393,13 @@ export default function OrcamentoExecutivoPage() {
                         title="Editar Item"
                       >
                         <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDuplicateItem(item)}
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition cursor-pointer"
+                        title="Duplicar Item do Orçamento"
+                      >
+                        <Copy className="w-4 h-4" />
                       </button>
                       <Link
                         href={`/cotacoes?itemId=${item.id}&action=quote`}
@@ -404,8 +435,17 @@ export default function OrcamentoExecutivoPage() {
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-slate-900">
-              {formData.id ? 'Editar Item do Orçamento' : 'Novo Item no Orçamento'}
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              {isDuplicating ? (
+                <>
+                  <Copy className="w-5 h-5 text-blue-600" />
+                  <span>Duplicar Item do Orçamento</span>
+                </>
+              ) : formData.id ? (
+                'Editar Item do Orçamento'
+              ) : (
+                'Novo Item no Orçamento'
+              )}
             </h2>
             <form onSubmit={handleSave} className="space-y-3 text-xs">
               <div className="grid grid-cols-3 gap-2">
@@ -743,7 +783,7 @@ export default function OrcamentoExecutivoPage() {
                     type="submit"
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer text-xs transition"
                   >
-                    Salvar Item
+                    {isDuplicating ? 'Salvar Item Duplicado' : 'Salvar Item'}
                   </button>
                 </div>
               </div>
