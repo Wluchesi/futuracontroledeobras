@@ -49,8 +49,8 @@ const PLANS = [
   },
   {
     id: 'Premium',
-    name: 'Kitneteiro Premium (SINAPI & IA)',
-    badge: 'Inteligência & Multi-Obras 🚀',
+    name: 'Kitneteiro Premium (SINAPI)',
+    badge: 'Multi-Obras',
     price: 99,
     priceLabel: 'R$ 99',
     period: '/mês',
@@ -62,7 +62,7 @@ const PLANS = [
       'Integração com Tabela SINAPI (Preços Automáticos)',
       'Rateio / Divisão Automática de Compras em Lote',
       'Relatórios Profissionais Customizados (PDF / Excel)',
-      'Alertas Financeiros & Lembretes no WhatsApp',
+      'Alertas Financeiros & Lembretes',
       'Importação de Orçamentos via Excel',
       'Suporte Prioritário por WhatsApp com Especialista',
     ],
@@ -130,7 +130,7 @@ export default function PlanosPage() {
   }
 
   const isSuper = isSuperAdmin(user);
-  const activePlans = (isSuper && showTestPlan) ? [...PLANS, TEST_PLAN] : PLANS;
+  const activePlans = showTestPlan ? [...PLANS, TEST_PLAN] : PLANS;
 
   const checkIsCurrentPlan = (planId: string) => {
     const norm = (currentPlan || '').toLowerCase();
@@ -253,39 +253,37 @@ export default function PlanosPage() {
         </div>
       </div>
 
-      {/* Painel do Administrador: Controle do Plano de Teste (R$ 1,00) - Apenas SuperAdmin */}
-      {isSuper && (
-        <div className="glass-card bg-slate-900/90 border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl">
-              <FlaskConical className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-white text-sm flex items-center space-x-2">
-                <span>Modo de Teste de Pagamentos (Plano de R$ 1,00)</span>
-                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] uppercase rounded font-bold">
-                  Painel SuperAdmin
-                </span>
-              </h4>
-              <p className="text-slate-400 text-[11px] mt-0.5">
-                Habilite ou desabilite a exibição do card de **R$ 1,00** para testar pagamentos reais com PIX ou Cartão.
-              </p>
-            </div>
+      {/* Painel: Modo de Teste de Pagamentos (Plano de R$ 1,00) */}
+      <div className="glass-card bg-slate-900/90 border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl">
+            <FlaskConical className="w-5 h-5" />
           </div>
-
-          <button
-            onClick={() => toggleTestPlan(!showTestPlan)}
-            className={`px-4 py-2 rounded-xl font-bold transition flex items-center space-x-2 cursor-pointer ${
-              showTestPlan
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
-            }`}
-          >
-            {showTestPlan ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            <span>{showTestPlan ? 'Plano R$ 1,00 Visível (Clique p/ Ocultar)' : 'Oculto (Clique p/ Exibir R$ 1,00)'}</span>
-          </button>
+          <div>
+            <h4 className="font-extrabold text-white text-sm flex items-center space-x-2">
+              <span>Modo de Teste de Pagamentos (Plano de R$ 1,00)</span>
+              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] uppercase rounded font-bold">
+                Ativo para Teste
+              </span>
+            </h4>
+            <p className="text-slate-400 text-[11px] mt-0.5">
+              Habilite ou desabilite a exibição do card de **R$ 1,00** para testar pagamentos reais com PIX ou Cartão.
+            </p>
+          </div>
         </div>
-      )}
+
+        <button
+          onClick={() => toggleTestPlan(!showTestPlan)}
+          className={`px-4 py-2 rounded-xl font-bold transition flex items-center space-x-2 cursor-pointer ${
+            showTestPlan
+              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md'
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+          }`}
+        >
+          {showTestPlan ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+          <span>{showTestPlan ? 'Plano R$ 1,00 Visível (Clique p/ Ocultar)' : 'Oculto (Clique p/ Exibir R$ 1,00)'}</span>
+        </button>
+      </div>
 
       {/* Alertas de Retorno */}
       {message && (

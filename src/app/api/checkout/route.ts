@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     let planTitle = 'Kitneteiro Pro';
     if (planId === 'Premium') {
       planPrice = 99;
-      planTitle = 'Kitneteiro Premium (SINAPI & IA)';
+      planTitle = 'Kitneteiro Premium (SINAPI)';
     } else if (planId === 'Gratuito') {
       planPrice = 0;
       planTitle = 'Plano Gratuito';
