@@ -109,34 +109,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'Evento recebido. Aguardando status de confirmação.' });
     }
 
-    // Se tiver um transactionId do MP, valida o pagamento real antes de ativar (ignora testes)
-    const isTestTx = !transactionId || transactionId.startsWith('tx_mp_sim_') || transactionId.startsWith('tx_card_') || planId === 'Teste1Real';
+    // Validação real de pagamento no Mercado Pago antes de liberar o plano
+    if (mpAccessToken) {
+      let isPaymentConfirmed = false;
 
-    if (!isTestTx && transactionId && mpAccessToken) {
-      console.log(`[Webhook Manual] Verificando transação ${transactionId} no Mercado Pago...`);
-      try {
-        const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${transactionId}`, {
-          headers: { 'Authorization': `Bearer ${mpAccessToken}` },
-          signal: AbortSignal.timeout(3500),
-        });
-
-        if (mpRes.ok) {
-          const mpPayment = await mpRes.json();
-          console.log(`[Webhook Manual] Status do pagamento ${transactionId}: ${mpPayment.status}`);
-
-          if (mpPayment.status !== 'approved') {
-            return NextResponse.json(
-              { error: `Pagamento ainda não confirmado pelo banco (status: ${mpPayment.status}). Aguarde alguns instantes e tente novamente.` },
-              { status: 402 }
-            );
+      // 1. Se o transactionId for numérico (ID de pagamento gerado pelo Mercado Pago)
+      if (transactionId && /^\d+$/.test(transactionId)) {
+        try {
+          const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${transactionId}`, {
+            headers: { 'Authorization': `Bearer ${mpAccessToken}` },
+            signal: AbortSignal.timeout(3500),
+          });
+          if (mpRes.ok) {
+            const mpPayment = await mpRes.json();
+            console.log(`[Webhook Manual] Status do pagamento ${transactionId}: ${mpPayment.status}`);
+            if (mpPayment.status === 'approved') {
+              isPaymentConfirmed = true;
+            }
           }
-        } else {
-          // Se não conseguiu consultar o MP (sandbox pode ser instável), segue sem bloquear
-          console.warn(`[Webhook Manual] Não foi possível verificar o pagamento no MP. Ativando plano mesmo assim.`);
+        } catch (err) {
+          console.warn('[Webhook] Erro ao consultar pagamento por ID:', err);
         }
-      } catch (mpErr) {
-        // Não bloqueia por erro de conexão com MP — ativa o plano e loga o aviso
-        console.warn('[Webhook Manual] Erro ao consultar MP, ativando plano sem verificação:', mpErr);
+      }
+
+      // 2. Se não confirmou por ID, consulta os pagamentos mais recentes na conta do Mercado Pago
+      if (!isPaymentConfirmed) {
+        try {
+          const searchRes = await fetch(`https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&limit=10`, {
+            headers: { 'Authorization': `Bearer ${mpAccessToken}` },
+            signal: AbortSignal.timeout(3500),
+          });
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const matching = searchData.results?.find((p: any) => 
+              p.status === 'approved' && 
+              (p.metadata?.company_id === companyId || p.metadata?.plan_id === planId)
+            );
+            if (matching) {
+              console.log(`[Webhook Manual] Pagamento correspondente encontrado no MP: ${matching.id}`);
+              isPaymentConfirmed = true;
+            }
+          }
+        } catch (err) {
+          console.warn('[Webhook] Erro ao pesquisar pagamentos recentes:', err);
+        }
+      }
+
+      // Se o valor NÃO caiu aprovado na conta do Mercado Pago: BLOQUEIA A LIBERAÇÃO
+      if (!isPaymentConfirmed) {
+        return NextResponse.json(
+          { error: 'O pagamento ainda não foi identificado ou compensado na sua conta do Mercado Pago. Aguarde alguns instantes após realizar o PIX/Cartão e clique novamente em Verificar.' },
+          { status: 402 }
+        );
       }
     }
 

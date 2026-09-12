@@ -57,6 +57,54 @@ export async function POST(request: Request) {
       ? `comprador_${Date.now()}@testuser.com` 
       : baseEmail;
 
+    // Gera preferência oficial no Mercado Pago para permitir checkout oficial
+    let checkoutUrl = '';
+    if (mpAccessToken) {
+      try {
+        const prefRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${mpAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            items: [
+              {
+                id: planId,
+                title: `Assinatura ${planTitle}`,
+                quantity: 1,
+                currency_id: 'BRL',
+                unit_price: planPrice,
+              },
+            ],
+            payer: {
+              email: company.users?.[0]?.email || 'cliente@gestaodeobras.com',
+              name: company.name || 'Cliente',
+            },
+            metadata: {
+              company_id: company.id,
+              plan_id: planId,
+            },
+            notification_url: 'https://futuracontroledeobras.vercel.app/api/webhooks/payment',
+            back_urls: {
+              success: 'https://futuracontroledeobras.vercel.app/planos?status=success',
+              pending: 'https://futuracontroledeobras.vercel.app/planos?status=pending',
+              failure: 'https://futuracontroledeobras.vercel.app/planos?status=failure',
+            },
+            auto_return: 'approved',
+          }),
+          signal: AbortSignal.timeout(3500),
+        });
+
+        if (prefRes.ok) {
+          const prefData = await prefRes.json();
+          checkoutUrl = prefData.init_point || prefData.sandbox_init_point || '';
+        }
+      } catch (prefErr) {
+        console.warn('Erro ao gerar preferência Mercado Pago:', prefErr);
+      }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // FLUXO PIX
     // ─────────────────────────────────────────────────────────────────────────
@@ -141,10 +189,10 @@ export async function POST(request: Request) {
         planTitle,
         pixQrCodeUrl,
         pixCopiaECola,
-        checkoutUrl: '',
+        checkoutUrl,
         status: 'PENDING',
         expiresInSeconds: 900,
-        provider: isTestPlan || isTestMode ? 'SIMULADOR_TESTE' : 'MERCADO_PAGO_TRANSPARENTE',
+        provider: 'MERCADO_PAGO_OFICIAL',
       });
     }
 
@@ -157,19 +205,12 @@ export async function POST(request: Request) {
       }
 
       const cleanCardNumber = cardDetails.number.replace(/\s+/g, '');
-      const isTestCard = 
-        cleanCardNumber.startsWith('5031') || 
-        cleanCardNumber.startsWith('4532') || 
-        cardDetails.holderName.toUpperCase().includes('APRO') ||
-        cardDetails.holderName.toUpperCase().includes('TEST') ||
-        isTestPlan;
-
       let isApproved = false;
-      let transactionId = `tx_card_sim_${Date.now()}`;
+      let transactionId = `tx_card_${Date.now()}`;
       let mpMessage = '';
 
-      // Tenta processar no Mercado Pago se for cartão real em produção
-      if (mpAccessToken && !isTestMode && !isTestCard) {
+      // Tenta processar no Mercado Pago de forma transparente se as credenciais permitirem
+      if (mpAccessToken && !isTestMode) {
         try {
           const mpPublicKey = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
           const [expMonth, expYear] = (cardDetails.expiry || '12/2028').split('/');
@@ -238,7 +279,8 @@ export async function POST(request: Request) {
               } else {
                 console.warn('Mercado Pago Cartão Erro:', payData);
                 return NextResponse.json({
-                  error: payData.message || payData.status_detail || 'Pagamento recusado pelo Mercado Pago.',
+                  error: payData.message || payData.status_detail || 'Pagamento recusado pela operadora.',
+                  checkoutUrl,
                 }, { status: 400 });
               }
             }
@@ -246,18 +288,17 @@ export async function POST(request: Request) {
         } catch (cardErr) {
           console.error('Erro na API de Cartão do Mercado Pago:', cardErr);
         }
-      } else {
-        // Modo Teste / Simulação para o plano de teste ou cartões de teste
-        isApproved = true;
-        transactionId = `tx_card_test_${Date.now()}`;
-        mpMessage = `Pagamento de teste de R$ ${planPrice},00 aprovado com sucesso!`;
       }
 
+      // Se não aprovou de forma transparente pelo gateway, NÃO libera o plano
       if (!isApproved) {
-        return NextResponse.json({ error: 'Falha ao processar o pagamento com cartão.' }, { status: 402 });
+        return NextResponse.json({
+          error: 'Não foi possível processar o cartão diretamente nesta modalidade. Para pagar com segurança e comprovação direta na conta, utilize o Checkout Oficial do Mercado Pago.',
+          checkoutUrl,
+        }, { status: 402 });
       }
 
-      // Atualiza a empresa após a aprovação do pagamento
+      // Atualiza a empresa SOMENTE após aprovação confirmada no gateway
       let formattedPlanName = 'Kitneteiro Pro (1 Obra / Kitnets Ilimitadas)';
       let maxProjects = 1;
       let maxUsers = 10;
@@ -289,7 +330,7 @@ export async function POST(request: Request) {
         amount: planPrice,
         planTitle,
         company: updatedCompany,
-        provider: isTestCard || isTestMode ? 'SIMULADOR_TESTE' : 'MERCADO_PAGO_TRANSPARENTE',
+        provider: 'MERCADO_PAGO_TRANSPARENTE',
         message: mpMessage,
       });
     }

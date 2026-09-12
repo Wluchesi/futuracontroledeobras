@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, QrCode, CreditCard, Copy, CheckCircle2, ShieldCheck, Lock, Loader2, Sparkles } from 'lucide-react';
+import { X, QrCode, CreditCard, Copy, CheckCircle2, ShieldCheck, Lock, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface CheckoutModalProps {
@@ -300,6 +300,20 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
                       </div>
                     </div>
 
+                    {pixData.checkoutUrl && (
+                      <div className="pt-1">
+                        <a
+                          href={pixData.checkoutUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 px-3 bg-sky-950/70 hover:bg-sky-900/80 text-sky-300 border border-sky-800 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-2"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Pagar no Checkout Oficial do Mercado Pago</span>
+                        </a>
+                      </div>
+                    )}
+
                     <div className="pt-2">
                       <button
                         onClick={handleConfirmPixPayment}
@@ -311,7 +325,7 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
                         ) : (
                           <>
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>Já Paguei / Confirmar Pagamento PIX</span>
+                            <span>Verificar se o valor caiu na conta</span>
                           </>
                         )}
                       </button>
@@ -324,36 +338,17 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
             {/* Conteúdo Aba Cartão de Crédito */}
             {paymentMethod === 'CREDIT_CARD' && (
               <form onSubmit={handlePayCreditCard} className="space-y-3">
-                {/* Botões Rápido de Preenchimento de Teste */}
-                <div className="flex items-center space-x-2 pb-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCardForm({
-                        number: '5031 7557 3453 8892',
-                        holderName: 'APRO TEST',
-                        expiry: '11/28',
-                        cvv: '123',
-                      })
-                    }
-                    className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-[11px] rounded-lg border border-slate-700 transition"
-                  >
-                    ⚡ Teste Mastercard
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCardForm({
-                        number: '4532 1177 3453 8892',
-                        holderName: 'APRO TEST',
-                        expiry: '11/28',
-                        cvv: '123',
-                      })
-                    }
-                    className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold text-[11px] rounded-lg border border-slate-700 transition"
-                  >
-                    ⚡ Teste Visa
-                  </button>
+                {/* Bandeiras Aceitas */}
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-slate-400 mb-1">
+                  <span className="font-medium text-[11px]">Bandeiras aceitas:</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2.5 py-0.5 bg-slate-800 text-amber-300 font-extrabold text-[11px] rounded-md border border-slate-700">
+                      Mastercard
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-slate-800 text-sky-400 font-extrabold text-[11px] rounded-md border border-slate-700">
+                      Visa
+                    </span>
+                  </div>
                 </div>
 
                 <div>
