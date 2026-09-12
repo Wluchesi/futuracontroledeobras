@@ -416,17 +416,17 @@ export default function ConfiguracoesPage() {
               Backup Geral da Plataforma (Super Admin)
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Exportação de segurança completa do banco de dados relacional para preservação de dados.
+              Exportação de segurança completa do banco de dados (Obras, Orçamentos, Cotações, Compras, Financeiro e Fornecedores) em formato JSON estruturado.
             </p>
           </div>
           <div className="flex items-center">
             <a
               href="/api/backup"
-              download="backup-gerenciador-de-obras.db"
+              download="backup-gerenciador-de-obras.json"
               className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition"
             >
               <Download className="w-4 h-4" />
-              <span>Fazer Download do Backup</span>
+              <span>Fazer Download do Backup (.json)</span>
             </a>
           </div>
         </div>
