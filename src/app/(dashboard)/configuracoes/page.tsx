@@ -17,11 +17,15 @@ import {
   Zap,
   ArrowRight,
   Shield,
+  Camera,
+  Trash2,
+  User,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function ConfiguracoesPage() {
   const { selectedProject, refreshProjects } = useProject();
-  const { user } = useAuth();
+  const { user, updateUserSession } = useAuth();
   const router = useRouter();
 
   const isSuper = isSuperAdmin(user);
@@ -36,6 +40,78 @@ export default function ConfiguracoesPage() {
 
   const [exceedRule, setExceedRule] = useState(selectedProject?.exceedRule || 1);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Estados do Perfil Pessoal & Foto
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState(user?.avatarUrl || '');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaveMsg, setProfileSaveMsg] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name || '');
+      setProfileAvatarUrl(user.avatarUrl || '');
+    }
+  }, [user]);
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setProfileAvatarUrl(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+
+    try {
+      setSavingProfile(true);
+      const payload: any = {
+        id: user.id,
+        name: profileName,
+        avatarUrl: profileAvatarUrl || null,
+      };
+      if (profilePassword.trim()) {
+        payload.password = profilePassword.trim();
+      }
+
+      const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        updateUserSession({
+          name: profileName,
+          avatarUrl: profileAvatarUrl || null,
+        });
+        setProfilePassword('');
+        setProfileSaveMsg('Foto e perfil atualizados com sucesso! 🟢');
+        setTimeout(() => setProfileSaveMsg(''), 4000);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao salvar perfil.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro de rede ao salvar perfil.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   // Estados da Empresa e SaaS
   const [company, setCompany] = useState<any>(null);
@@ -157,6 +233,140 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Card 0: Meu Perfil de Usuário & Foto */}
+        <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 lg:col-span-2 bg-white">
+          <div className="flex items-center justify-between border-b pb-3">
+            <h2 className="text-base font-bold text-slate-900 flex items-center">
+              <User className="w-5 h-5 text-emerald-600 mr-2" />
+              Meu Perfil de Usuário & Foto
+            </h2>
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase bg-purple-100 text-purple-800">
+              {user?.role || 'ADMIN'}
+            </span>
+          </div>
+
+          {profileSaveMsg && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{profileSaveMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              {/* Foto / Avatar Preview */}
+              <div className="relative group shrink-0">
+                {profileAvatarUrl ? (
+                  <img
+                    src={profileAvatarUrl}
+                    alt={profileName}
+                    className="w-24 h-24 rounded-full object-cover shadow-md border-2 border-emerald-500"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shadow-md">
+                    {profileName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'US'}
+                  </div>
+                )}
+
+                <label
+                  htmlFor="avatar-file-input"
+                  className="absolute bottom-0 right-0 p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg cursor-pointer transition"
+                  title="Alterar Foto"
+                >
+                  <Camera className="w-4 h-4" />
+                  <input
+                    id="avatar-file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Botões e Instruções da Foto */}
+              <div className="space-y-2 text-center sm:text-left flex-1">
+                <h3 className="font-bold text-sm text-slate-800">Foto de Perfil</h3>
+                <p className="text-slate-500 text-[11px] leading-relaxed">
+                  Envie uma foto ou imagem pessoal para identificar sua conta na barra lateral e nos relatórios.
+                  Recomendado imagem quadrada em PNG, JPG ou WebP (máx. 2MB).
+                </p>
+
+                <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                  <label
+                    htmlFor="avatar-file-input"
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Carregar Nova Foto</span>
+                  </label>
+
+                  {profileAvatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setProfileAvatarUrl('')}
+                      className="px-3 py-1.5 bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center space-x-1"
+                      title="Remover foto atual"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Remover</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Campos de Nome e Senha */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-semibold block mb-1 text-slate-700">Seu Nome Completo *</label>
+                <input
+                  type="text"
+                  required
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-hidden text-xs text-slate-900 font-medium"
+                  placeholder="Seu nome"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold block mb-1 text-slate-700">E-mail de Acesso</label>
+                <input
+                  type="email"
+                  disabled
+                  value={user?.email || ''}
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 cursor-not-allowed font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="font-semibold block mb-1 text-slate-700">
+                  Alterar Senha Pessoal (Opcional)
+                </label>
+                <input
+                  type="password"
+                  value={profilePassword}
+                  onChange={(e) => setProfilePassword(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-hidden text-xs text-slate-900"
+                  placeholder="Preencha apenas se desejar trocar a senha atual..."
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={savingProfile}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center space-x-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingProfile ? 'Salvando...' : 'Salvar Alterações do Meu Perfil'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
         {/* Card 1: Perfil da Empresa & Limites SaaS */}
         <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <h2 className="text-base font-bold text-slate-900 flex items-center justify-between border-b pb-3">

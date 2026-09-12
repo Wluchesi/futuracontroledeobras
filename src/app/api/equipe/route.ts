@@ -18,6 +18,7 @@ export async function GET(request: Request) {
         name: true,
         email: true,
         role: true,
+        avatarUrl: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { companyId, name, email, password, role } = await request.json();
+    const { companyId, name, email, password, role, avatarUrl } = await request.json();
 
     if (!companyId || !name || !email || !password) {
       return NextResponse.json({ error: 'Todos os campos são obrigatórios.' }, { status: 400 });
@@ -82,12 +83,14 @@ export async function POST(request: Request) {
         email: email.toLowerCase().trim(),
         passwordHash,
         role: role || 'ENGENHEIRO',
+        avatarUrl: avatarUrl || null,
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        avatarUrl: true,
         createdAt: true,
       },
     });
@@ -101,7 +104,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { id, companyId, name, email, password, role } = await request.json();
+    const { id, companyId, name, email, password, role, avatarUrl } = await request.json();
 
     if (!id || !name || !email) {
       return NextResponse.json({ error: 'ID, Nome e E-mail são obrigatórios.' }, { status: 400 });
@@ -137,6 +140,10 @@ export async function PUT(request: Request) {
       role: role || userToUpdate.role,
     };
 
+    if (avatarUrl !== undefined) {
+      updateData.avatarUrl = avatarUrl;
+    }
+
     if (password && password.trim().length > 0) {
       updateData.passwordHash = await bcrypt.hash(password.trim(), 10);
     }
@@ -149,6 +156,7 @@ export async function PUT(request: Request) {
         name: true,
         email: true,
         role: true,
+        avatarUrl: true,
         createdAt: true,
       },
     });

@@ -507,7 +507,20 @@ export default function AdminGeralPage() {
                         {comp.users && comp.users.length > 0 ? (
                           comp.users.map((u: any) => (
                             <tr key={u.id} className="hover:bg-slate-50/60 transition">
-                              <td className="py-2.5 px-3 font-bold text-slate-900">{u.name}</td>
+                              <td className="py-2.5 px-3 font-bold text-slate-900 flex items-center space-x-2.5">
+                                {u.avatarUrl ? (
+                                  <img
+                                    src={u.avatarUrl}
+                                    alt={u.name}
+                                    className="w-7 h-7 rounded-full object-cover shadow-xs border border-emerald-500/50 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0">
+                                    {u.name.slice(0, 2).toUpperCase()}
+                                  </div>
+                                )}
+                                <span>{u.name}</span>
+                              </td>
                               <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{u.email}</td>
                               <td className="py-2.5 px-3">
                                 <span

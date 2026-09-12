@@ -19,6 +19,7 @@ export async function GET() {
               name: true,
               email: true,
               role: true,
+              avatarUrl: true,
               createdAt: true,
               updatedAt: true,
             },

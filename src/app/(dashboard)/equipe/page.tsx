@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth, isSuperAdmin } from '@/context/AuthContext';
-import { Users, UserPlus, Shield, Mail, Key, Loader2, AlertCircle, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Shield, Mail, Key, Loader2, AlertCircle, CheckCircle2, Edit3, Trash2, Camera } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -14,7 +14,7 @@ export default function EquipePage() {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'ENGENHEIRO' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'ENGENHEIRO', avatarUrl: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,16 +55,33 @@ export default function EquipePage() {
 
   const handleOpenAddModal = () => {
     setEditingUser(null);
-    setFormData({ name: '', email: '', password: '', role: 'ENGENHEIRO' });
+    setFormData({ name: '', email: '', password: '', role: 'ENGENHEIRO', avatarUrl: '' });
     setError(null);
     setShowModal(true);
   };
 
   const handleOpenEditModal = (u: any) => {
     setEditingUser(u);
-    setFormData({ name: u.name, email: u.email, password: '', role: u.role });
+    setFormData({ name: u.name, email: u.email, password: '', role: u.role, avatarUrl: u.avatarUrl || '' });
     setError(null);
     setShowModal(true);
+  };
+
+  const handleMemberAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setFormData((prev) => ({ ...prev, avatarUrl: base64 }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveMember = async (e: React.FormEvent) => {
@@ -95,7 +112,7 @@ export default function EquipePage() {
       if (res.ok && data.success) {
         setShowModal(false);
         setEditingUser(null);
-        setFormData({ name: '', email: '', password: '', role: 'ENGENHEIRO' });
+        setFormData({ name: '', email: '', password: '', role: 'ENGENHEIRO', avatarUrl: '' });
         fetchTeam();
       } else {
         setError(data.error || 'Erro ao salvar dados do membro.');
@@ -214,9 +231,17 @@ export default function EquipePage() {
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50/80 transition">
                   <td className="p-4 pl-6 font-bold text-slate-900 flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs">
-                      {u.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    {u.avatarUrl ? (
+                      <img
+                        src={u.avatarUrl}
+                        alt={u.name}
+                        className="w-8 h-8 rounded-full object-cover shadow border border-emerald-500/50 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs shrink-0">
+                        {u.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     <span>{u.name}</span>
                   </td>
                   <td className="p-4 text-slate-600 font-mono">{u.email}</td>
@@ -297,6 +322,53 @@ export default function EquipePage() {
             {error && <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">{error}</div>}
 
             <form onSubmit={handleSaveMember} className="space-y-4">
+              {/* Foto / Imagem do Membro */}
+              <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="relative group shrink-0">
+                  {formData.avatarUrl ? (
+                    <img
+                      src={formData.avatarUrl}
+                      alt={formData.name}
+                      className="w-14 h-14 rounded-full object-cover shadow border border-emerald-500"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm shadow-xs">
+                      {formData.name ? formData.name.slice(0, 2).toUpperCase() : 'US'}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 text-xs">
+                  <span className="block font-bold text-slate-700">Foto do Membro</span>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <label
+                      htmlFor="member-avatar-input"
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg cursor-pointer transition flex items-center space-x-1"
+                    >
+                      <Camera className="w-3 h-3" />
+                      <span>{formData.avatarUrl ? 'Trocar Foto' : 'Carregar Foto'}</span>
+                      <input
+                        id="member-avatar-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleMemberAvatarChange}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {formData.avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, avatarUrl: '' })}
+                        className="px-2 py-1 text-rose-600 hover:bg-rose-50 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Nome Completo *</label>
                 <input
