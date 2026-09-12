@@ -113,7 +113,7 @@ function ComprasContent() {
       if (resBudget.ok) {
         const items = await resBudget.json();
         setBudgetItems(items);
-        if (items.length > 0 && !formData.budgetItemId) {
+        if (items.length > 0 && !formData.budgetItemId && !searchParams.get('budgetItemId')) {
           const first = items[0];
           setFormData((prev) => ({
             ...prev,
@@ -136,6 +136,45 @@ function ComprasContent() {
   useEffect(() => {
     fetchData();
   }, [selectedProject]);
+
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'new' && budgetItems.length > 0) {
+      const pBudgetItem = searchParams.get('budgetItemId');
+      const pSupplier = searchParams.get('supplierId');
+      const pUnitPrice = searchParams.get('unitPrice');
+      const pQty = searchParams.get('quantity');
+      const pDiscount = searchParams.get('discount');
+      const pFreight = searchParams.get('freight');
+      const pPayment = searchParams.get('paymentCondition');
+
+      const targetItem = pBudgetItem
+        ? budgetItems.find((b: any) => b.id === pBudgetItem) || budgetItems[0]
+        : budgetItems[0];
+
+      if (targetItem) {
+        setFormData({
+          id: '',
+          budgetItemId: targetItem.id,
+          supplierId: pSupplier || targetItem.chosenSupplierId || suppliers[0]?.id || '',
+          invoiceNumber: '',
+          description: targetItem.itemName,
+          quantity: pQty !== null && pQty !== undefined ? Number(pQty) : (targetItem.quantity || 1),
+          unit: targetItem.unit || 'un',
+          unitPrice: pUnitPrice !== null && pUnitPrice !== undefined ? Number(pUnitPrice) : (targetItem.contractedUnitPrice || 0),
+          discount: pDiscount !== null && pDiscount !== undefined ? Number(pDiscount) : 0,
+          freight: pFreight !== null && pFreight !== undefined ? Number(pFreight) : 0,
+          paymentCondition: pPayment || '30 dias',
+          dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+          notes: '',
+          forceConfirm: false,
+          isDirectPurchase: false,
+        });
+        setShowNewSupplierBox(false);
+        setShowModal(true);
+      }
+    }
+  }, [searchParams, budgetItems, suppliers]);
 
   const handleBudgetItemChange = (budgetItemId: string) => {
     const item = budgetItems.find((b) => b.id === budgetItemId);

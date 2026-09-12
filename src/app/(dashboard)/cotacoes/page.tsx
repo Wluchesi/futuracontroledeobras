@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useProject } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -16,6 +17,7 @@ import {
   Layers,
   Search,
   X,
+  ShoppingCart,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 
@@ -517,6 +519,16 @@ function CotacoesContent() {
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
+                  {chosenQuot && (
+                    <Link
+                      href={`/compras?action=new&budgetItemId=${item.id}&supplierId=${chosenQuot.supplierId}&unitPrice=${chosenQuot.unitPrice}&quantity=${chosenQuot.quantity || item.quantity || 1}&discount=${chosenQuot.discount || 0}&freight=${(chosenQuot.freight || 0) + (chosenQuot.taxes || 0)}&paymentCondition=${encodeURIComponent(chosenQuot.paymentTerms || '30 dias')}`}
+                      className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
+                      title="Finalizar compra desta cotação vencedora no módulo de Compras"
+                    >
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                      <span>Comprar Vencedora</span>
+                    </Link>
+                  )}
                   {economy > 0 && (
                     <div className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs border border-emerald-300">
                       <TrendingDown className="w-4 h-4 mr-1 text-emerald-600" />
@@ -648,7 +660,16 @@ function CotacoesContent() {
                         )}
                       </div>
 
-                      {!isChosen && (
+                      {isChosen ? (
+                        <Link
+                          href={`/compras?action=new&budgetItemId=${item.id}&supplierId=${q.supplierId}&unitPrice=${q.unitPrice}&quantity=${q.quantity || item.quantity || 1}&discount=${q.discount || 0}&freight=${(q.freight || 0) + (q.taxes || 0)}&paymentCondition=${encodeURIComponent(q.paymentTerms || '30 dias')}`}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm group"
+                          title="Finalizar compra desta cotação vencedora no módulo de Compras"
+                        >
+                          <ShoppingCart className="w-4 h-4 text-emerald-100 group-hover:scale-110 transition-transform" />
+                          <span>Finalizar Compra</span>
+                        </Link>
+                      ) : (
                         <button
                           onClick={() => handleSelectWinningQuotation(q.id)}
                           className="w-full py-1.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center space-x-1 cursor-pointer"
