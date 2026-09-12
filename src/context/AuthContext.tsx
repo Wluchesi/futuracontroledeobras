@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateCompanySession = (updatedCompany: CompanySession) => {
     if (!user) return;
-    const newUser = { ...user, company: updatedCompany };
+    const newUser = { ...user, company: updatedCompany, companyId: updatedCompany.id };
     setUser(newUser);
     localStorage.setItem('user_session', JSON.stringify(newUser));
   };

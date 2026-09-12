@@ -28,12 +28,13 @@ import {
   Building,
   UserCheck,
   Database,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth, isSuperAdmin } from '@/context/AuthContext';
 
 const OPERATIONAL_MENU = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/obras', label: 'Obras', icon: Building2 },
+  { href: '/obras', label: 'Minhas Obras', icon: Building2 },
   { href: '/centros-de-custos', label: 'Centros de Custos', icon: FolderKanban },
   { href: '/orcamento-executivo', label: 'Orçamento Executivo', icon: Calculator },
   { href: '/sinapi', label: 'Tabela SINAPI', icon: Database, badge: 'PRO' },
@@ -47,6 +48,7 @@ const OPERATIONAL_MENU = [
 ];
 
 const SAAS_MENU = [
+  { href: '/admin-geral', label: 'Administração Geral', icon: ShieldCheck, badge: 'Master', roles: ['ADMIN'] },
   { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS', roles: ['ADMIN'] },
   { href: '/empresas', label: 'Empresas (Tenants)', icon: Building, superAdminOnly: true },
   { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck, roles: ['ADMIN'] },
