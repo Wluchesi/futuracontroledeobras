@@ -46,7 +46,13 @@ export default function BiCharts({ charts }: BiChartsProps) {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="code" stroke="#64748B" fontSize={11} interval={0} angle={-30} textAnchor="end" />
               <YAxis stroke="#64748B" fontSize={11} tickFormatter={(v) => `R$${v / 1000}k`} />
-              <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+              <Tooltip
+                formatter={(value: any) => formatCurrency(Number(value))}
+                labelFormatter={(code) => {
+                  const item = charts.chart1?.find((c) => c.code === code);
+                  return item?.fullName || `Centro ${code}`;
+                }}
+              />
               <Legend verticalAlign="top" height={36} />
               <Bar dataKey="Orçado (Vencedor)" fill="#3B82F6" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Realizado" fill="#10B981" radius={[4, 4, 0, 0]} />
@@ -82,26 +88,32 @@ export default function BiCharts({ charts }: BiChartsProps) {
           3. Status das Contas (🟢 Integral / 🔵 Parcial / 🟡 A Vencer / 🔴 Vencidas)
         </h3>
         <div className="h-72 w-full flex items-center justify-center">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={charts.chart3}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={95}
-                paddingAngle={4}
-                dataKey="value"
-                label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-              >
-                {charts.chart3.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: any) => [`${value} conta(s)`, 'Quantidade']} />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
-          </ResponsiveContainer>
+          {charts.chart3 && charts.chart3.some((e) => e.value > 0) ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={charts.chart3.filter((e) => e.value > 0)}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={95}
+                  paddingAngle={4}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
+                >
+                  {charts.chart3
+                    .filter((e) => e.value > 0)
+                    .map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                </Pie>
+                <Tooltip formatter={(value: any) => [`${value} conta(s)`, 'Quantidade']} />
+                <Legend verticalAlign="bottom" height={36} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-xs text-slate-400 italic">Nenhuma conta a pagar registrada</p>
+          )}
         </div>
       </div>
 
@@ -111,24 +123,28 @@ export default function BiCharts({ charts }: BiChartsProps) {
           <span className="w-2.5 h-2.5 rounded-full bg-purple-600 mr-2" />
           4. Distribuição dos Gastos por Centro de Custo
         </h3>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={charts.chart4}
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                dataKey="value"
-                label={({ name }) => name}
-              >
-                {charts.chart4.map((entry, index) => (
-                  <Cell key={`cell-dist-${index}`} fill={COLORS_PIE[index % COLORS_PIE.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="h-72 w-full flex items-center justify-center">
+          {charts.chart4 && charts.chart4.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={charts.chart4}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  dataKey="value"
+                  label={({ name }) => name}
+                >
+                  {charts.chart4.map((entry, index) => (
+                    <Cell key={`cell-dist-${index}`} fill={COLORS_PIE[index % COLORS_PIE.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-xs text-slate-400 italic">Nenhum gasto realizado nos centros de custo</p>
+          )}
         </div>
       </div>
 
@@ -159,16 +175,20 @@ export default function BiCharts({ charts }: BiChartsProps) {
           <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 mr-2" />
           6. Top 10 Fornecedores por Volume Comprado
         </h3>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart layout="vertical" data={charts.chart6} margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-              <XAxis type="number" stroke="#64748B" fontSize={11} tickFormatter={(v) => `R$${v / 1000}k`} />
-              <YAxis type="category" dataKey="name" stroke="#64748B" fontSize={10} width={100} />
-              <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
-              <Bar dataKey="total" fill="#6366F1" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="h-72 w-full flex items-center justify-center">
+          {charts.chart6 && charts.chart6.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart layout="vertical" data={charts.chart6} margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                <XAxis type="number" stroke="#64748B" fontSize={11} tickFormatter={(v) => `R$${v / 1000}k`} />
+                <YAxis type="category" dataKey="name" stroke="#64748B" fontSize={10} width={100} />
+                <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+                <Bar dataKey="total" fill="#6366F1" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-xs text-slate-400 italic">Nenhum fornecedor com compras registradas</p>
+          )}
         </div>
       </div>
     </div>

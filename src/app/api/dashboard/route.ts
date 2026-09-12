@@ -110,9 +110,11 @@ export async function GET(request: Request) {
 
     // --- CÁLCULO DOS CARDS KPI DE TOPO ---
     let totalContracted = 0; // Orçado Vencedor / Contratado
-    let totalPurchased = 0;
     let totalPaid = 0;
     let quotationSavings = 0;
+
+    // Total comprado calculado diretamente das compras reais
+    const totalPurchased = purchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
 
     const costCenterTotals: Record<string, { name: string; code: string; contracted: number; purchased: number }> = {};
 
@@ -131,10 +133,12 @@ export async function GET(request: Request) {
         : item.contractedTotal || 0;
 
       totalContracted += winnerBudget;
-      totalPurchased += item.purchasedTotal || 0;
 
+      // Economia obtida por concorrência ou abaixo do orçamento inicial
       if (highestQuotPrice > 0 && winnerBudget > 0 && highestQuotPrice > winnerBudget) {
-        quotationSavings += highestQuotPrice - winnerBudget;
+        quotationSavings += (highestQuotPrice - winnerBudget);
+      } else if (item.contractedTotal > 0 && winnerBudget > 0 && item.contractedTotal > winnerBudget) {
+        quotationSavings += (item.contractedTotal - winnerBudget);
       }
 
       // Agrupamento por Centro de Custo
@@ -148,7 +152,22 @@ export async function GET(request: Request) {
         };
       }
       costCenterTotals[ccCode].contracted += winnerBudget;
-      costCenterTotals[ccCode].purchased += item.purchasedTotal;
+    });
+
+    // Acumular compras realizadas diretamente no respectivo centro de custo
+    purchases.forEach((p) => {
+      if (p.costCenter?.code) {
+        const ccCode = p.costCenter.code;
+        if (!costCenterTotals[ccCode]) {
+          costCenterTotals[ccCode] = {
+            code: ccCode,
+            name: p.costCenter.name,
+            contracted: 0,
+            purchased: 0,
+          };
+        }
+        costCenterTotals[ccCode].purchased += (p.totalAmount || 0);
+      }
     });
 
     let openAmount = 0; // A vencer
@@ -229,20 +248,50 @@ export async function GET(request: Request) {
     // --- DADOS PARA OS 6 GRÁFICOS BI ---
 
     // Gráfico 1: Orçado (Vencedor) x Realizado por Centro de Custo
-    const chart1Data = Object.values(costCenterTotals)
-      .slice(0, 10)
-      .map((cc) => ({
-        code: cc.code,
-        name: cc.name.split('—')[1]?.trim() || cc.name,
-        'Orçado (Vencedor)': cc.contracted,
-        Realizado: cc.purchased,
-      }));
+    // 1. Centros de custo que têm movimentação (orçado > 0 ou realizado > 0) ordenados numericamente
+    const activeCostCenters = Object.values(costCenterTotals)
+      .filter((cc) => cc.contracted > 0 || cc.purchased > 0)
+      .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
 
-    // Gráfico 2: Evolução dos Gastos por Mês
+    // 2. Todos ordenados por código para completar se houver poucos
+    const allCostCentersSorted = Object.values(costCenterTotals)
+      .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+
+    const selectedCenters = activeCostCenters.length >= 6
+      ? activeCostCenters
+      : [
+          ...activeCostCenters,
+          ...allCostCentersSorted.filter((cc) => !activeCostCenters.some((a) => a.code === cc.code)),
+        ].slice(0, 10);
+
+    selectedCenters.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+
+    const chart1Data = selectedCenters.map((cc) => ({
+      code: cc.code,
+      name: cc.name.split('—')[1]?.trim() || cc.name,
+      fullName: cc.name,
+      'Orçado (Vencedor)': cc.contracted,
+      Realizado: cc.purchased,
+    }));
+
+    // Gráfico 2: Evolução dos Gastos por Mês (Linha temporal contínua dos últimos 6 meses)
+    const now = new Date();
+    const monthsList: Array<{ key: string }> = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      monthsList.push({ key });
+    }
+
     const monthlyGastos: Record<string, number> = {};
+    monthsList.forEach((m) => {
+      monthlyGastos[m.key] = 0;
+    });
+
     purchases.forEach((p) => {
-      const monthKey = new Date(p.date).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      monthlyGastos[monthKey] = (monthlyGastos[monthKey] || 0) + p.totalAmount;
+      const pDate = new Date(p.date);
+      const monthKey = pDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      monthlyGastos[monthKey] = (monthlyGastos[monthKey] || 0) + (p.totalAmount || 0);
     });
 
     const chart2Data = Object.keys(monthlyGastos).map((m) => ({
@@ -275,13 +324,40 @@ export async function GET(request: Request) {
         value: cc.purchased,
       }));
 
-    // Gráfico 5: Fluxo de Caixa (Saídas previstas x Saídas realizadas)
-    const cashFlowData = [
-      { month: 'Jan', Saidas: totalPaid * 0.25, Previsto: totalContracted * 0.2 },
-      { month: 'Fev', Saidas: totalPaid * 0.35, Previsto: totalContracted * 0.25 },
-      { month: 'Mar', Saidas: totalPaid * 0.4, Previsto: totalContracted * 0.3 },
-      { month: 'Abr', Saidas: totalPaid, Previsto: totalContracted * 0.8 },
-    ];
+    // Gráfico 5: Fluxo de Caixa Real (Saídas Previstas por Vencimento vs Realizadas por Pagamento)
+    const cashFlowMonths: Array<{ key: string }> = [];
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      cashFlowMonths.push({ key: d.toLocaleDateString('pt-BR', { month: 'short' }) });
+    }
+    for (let i = 1; i <= 2; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      cashFlowMonths.push({ key: d.toLocaleDateString('pt-BR', { month: 'short' }) });
+    }
+
+    const cashFlowMap: Record<string, { month: string; Previsto: number; Saidas: number }> = {};
+    cashFlowMonths.forEach((m) => {
+      cashFlowMap[m.key] = { month: m.key, Previsto: 0, Saidas: 0 };
+    });
+
+    accountsPayable.forEach((acc) => {
+      const dueDate = new Date(acc.dueDate);
+      const dueKey = dueDate.toLocaleDateString('pt-BR', { month: 'short' });
+      if (cashFlowMap[dueKey]) {
+        cashFlowMap[dueKey].Previsto += (acc.amount || 0);
+      }
+      if (acc.payments && Array.isArray(acc.payments)) {
+        acc.payments.forEach((pay) => {
+          const payDate = new Date(pay.paymentDate);
+          const payKey = payDate.toLocaleDateString('pt-BR', { month: 'short' });
+          if (cashFlowMap[payKey]) {
+            cashFlowMap[payKey].Saidas += (pay.amountPaid || 0);
+          }
+        });
+      }
+    });
+
+    const cashFlowData = Object.values(cashFlowMap);
 
     // Gráfico 6: Top 10 Fornecedores por Volume Comprado
     const supplierVolumes: Record<string, { name: string; total: number }> = {};
