@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
 import { useAuth, isSuperAdmin } from '@/context/AuthContext';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FileUp, CheckCircle, UploadCloud, AlertCircle } from 'lucide-react';
+import { FileUp, CheckCircle, UploadCloud, AlertCircle, Zap, Sparkles, Lock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function ImportarExcelPage() {
@@ -17,7 +18,10 @@ export default function ImportarExcelPage() {
   const [importSuccess, setImportSuccess] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const isAdmin = user?.role === 'ADMIN' || isSuperAdmin(user);
+  const isSuper = isSuperAdmin(user);
+  const planName = (user?.company?.planName || '').toLowerCase();
+  const isPaidPlan = isSuper || planName.includes('pro') || planName.includes('premium') || planName.includes('teste');
+  const isAdmin = user?.role === 'ADMIN' || isSuper;
 
   useEffect(() => {
     if (user && !isAdmin) {
@@ -53,6 +57,10 @@ export default function ImportarExcelPage() {
   };
 
   const handleConfirmImport = async () => {
+    if (!isPaidPlan) {
+      alert('A importação de planilhas Excel é exclusiva para planos Pro e Premium. Faça upgrade para continuar.');
+      return;
+    }
     if (parsedRows.length === 0) return;
     try {
       setLoading(true);
@@ -93,6 +101,35 @@ export default function ImportarExcelPage() {
           </p>
         </div>
       </div>
+
+      {/* Banner de Upgrade para Contas Gratuitas */}
+      {!isPaidPlan && (
+        <div className="glass-card bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-900 border border-amber-500/30 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl flex-shrink-0">
+              <Zap className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center">
+                <span>Recurso Exclusivo dos Planos Pro & Premium</span>
+                <span className="ml-2.5 px-2 py-0.5 bg-amber-500/20 text-amber-500 text-[10px] uppercase font-extrabold rounded-md">
+                  Upgrade Necessário
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-xl">
+                Sua conta atual está no <strong>Plano Gratuito</strong>. A importação em lote de orçamentos e insumos via Excel está disponível a partir do plano <strong>Kitneteiro Pro</strong>.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/planos"
+            className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center space-x-2 shrink-0 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Fazer Upgrade de Plano</span>
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Formulário de Seleção e Upload */}

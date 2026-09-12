@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const SUPER_ADMINS = ['wluchesi@gmail.com', 'cinzialuchesi@gmail.com'];
+import { checkIsSuperAdminEmail } from '@/lib/auth-constants';
 
 export async function GET(request: Request) {
   try {
@@ -9,7 +8,7 @@ export async function GET(request: Request) {
     const userEmail = searchParams.get('userEmail');
     const companyId = searchParams.get('companyId');
 
-    const isSuper = userEmail && SUPER_ADMINS.includes(userEmail.toLowerCase().trim());
+    const isSuper = checkIsSuperAdminEmail(userEmail);
 
     const where: any = {};
     if (!isSuper) {

@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { checkIsSuperAdminEmail } from '@/lib/auth-constants';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const userEmail = searchParams.get('userEmail') || request.headers.get('x-user-email');
+
+    if (!checkIsSuperAdminEmail(userEmail)) {
+      return NextResponse.json(
+        { error: 'Acesso não autorizado. Apenas Super Administradores da plataforma têm permissão.' },
+        { status: 403 }
+      );
+    }
     const [companies, totalProjects, totalUsers] = await Promise.all([
       prisma.company.findMany({
         include: {
@@ -82,7 +92,15 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { action } = body;
+    const { action, userEmail } = body;
+    const emailToCheck = userEmail || request.headers.get('x-user-email');
+
+    if (!checkIsSuperAdminEmail(emailToCheck)) {
+      return NextResponse.json(
+        { error: 'Acesso não autorizado. Apenas Super Administradores da plataforma têm permissão.' },
+        { status: 403 }
+      );
+    }
 
     // 1. AÇÃO: Alterar Plano da Empresa (Suporte / Erro de Pagamento / Upgrade Manual)
     if (action === 'update_plan') {

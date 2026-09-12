@@ -198,6 +198,7 @@ export default function ConfiguracoesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...companyFormData,
+          userEmail: user?.email,
           isSuperAdmin: isSuper,
         }),
       });

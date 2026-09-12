@@ -37,10 +37,14 @@ export async function GET(request: Request) {
   }
 }
 
+import { checkIsSuperAdminEmail } from '@/lib/auth-constants';
+
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, name, taxId, planName, maxProjects, maxUsers, isSuperAdmin } = body;
+    const { id, name, taxId, planName, maxProjects, maxUsers, userEmail } = body;
+    const emailToCheck = userEmail || request.headers.get('x-user-email');
+    const isRealSuper = checkIsSuperAdminEmail(emailToCheck);
 
     if (!id) return NextResponse.json({ error: 'ID da empresa é obrigatório.' }, { status: 400 });
 
@@ -52,8 +56,8 @@ export async function PUT(request: Request) {
       taxId: taxId !== undefined ? taxId : prev.taxId,
     };
 
-    // Apenas Super Admin pode alterar limites e plano via PUT manual
-    if (isSuperAdmin) {
+    // Apenas Super Admin real pode alterar limites e plano via PUT manual
+    if (isRealSuper) {
       if (planName) updateData.planName = planName;
       if (maxProjects !== undefined) updateData.maxProjects = Number(maxProjects);
       if (maxUsers !== undefined) updateData.maxUsers = Number(maxUsers);

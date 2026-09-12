@@ -48,7 +48,7 @@ const OPERATIONAL_MENU = [
 ];
 
 const SAAS_MENU = [
-  { href: '/admin-geral', label: 'Administração Geral', icon: ShieldCheck, badge: 'Master', roles: ['ADMIN'] },
+  { href: '/admin-geral', label: 'Administração Geral', icon: ShieldCheck, badge: 'Master', superAdminOnly: true },
   { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS', roles: ['ADMIN'] },
   { href: '/empresas', label: 'Empresas (Tenants)', icon: Building, superAdminOnly: true },
   { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck, roles: ['ADMIN'] },
@@ -57,7 +57,7 @@ const SAAS_MENU = [
 const SYSTEM_MENU = [
   { href: '/configuracoes', label: 'Configurações', icon: Settings, roles: ['ADMIN'] },
   { href: '/auditoria', label: 'Auditoria', icon: History, superAdminOnly: true },
-  { href: '/importar-excel', label: 'Importar Excel', icon: FileUp, roles: ['ADMIN'] },
+  { href: '/importar-excel', label: 'Importar Excel', icon: FileUp, badge: 'PRO', roles: ['ADMIN'] },
 ];
 
 export default function Sidebar() {

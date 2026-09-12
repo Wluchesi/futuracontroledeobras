@@ -31,14 +31,13 @@ export default function AdminGeralPage() {
   const router = useRouter();
 
   const isSuper = isSuperAdmin(user);
-  const isAdmin = user?.role === 'ADMIN' || isSuper;
 
-  // Proteção: Somente Administradores têm acesso
+  // Proteção estrita: Apenas Super Administradores da plataforma (Master) têm acesso
   useEffect(() => {
-    if (user && !isAdmin) {
+    if (user && !isSuper) {
       router.push('/');
     }
-  }, [user, isAdmin, router]);
+  }, [user, isSuper, router]);
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -69,15 +68,17 @@ export default function AdminGeralPage() {
   const [savingRole, setSavingRole] = useState(false);
 
   const fetchAdminData = async () => {
+    if (!user?.email) return;
     try {
       setLoading(true);
       setErrorMsg(null);
-      const res = await fetch('/api/admin-geral');
+      const res = await fetch(`/api/admin-geral?userEmail=${encodeURIComponent(user.email)}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
       } else {
-        setErrorMsg('Erro ao carregar dados de administração.');
+        const errJson = await res.json().catch(() => ({}));
+        setErrorMsg(errJson.error || 'Erro ao carregar dados de administração.');
       }
     } catch (e: any) {
       console.error(e);
@@ -88,12 +89,12 @@ export default function AdminGeralPage() {
   };
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isSuper && user?.email) {
       fetchAdminData();
     }
-  }, [isAdmin]);
+  }, [isSuper, user?.email]);
 
-  if (user && !isAdmin) {
+  if (user && !isSuper) {
     return null;
   }
 
@@ -136,6 +137,7 @@ export default function AdminGeralPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update_plan',
+          userEmail: user?.email,
           companyId: selectedCompanyForPlan.id,
           planType: selectedPlanType,
           customPlanName,
@@ -175,6 +177,7 @@ export default function AdminGeralPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'reset_user_password',
+          userEmail: user?.email,
           userId: selectedUserForPassword.id,
           newPassword,
         }),
@@ -211,6 +214,7 @@ export default function AdminGeralPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update_user_role',
+          userEmail: user?.email,
           userId: selectedUserForRole.id,
           newRole,
         }),
