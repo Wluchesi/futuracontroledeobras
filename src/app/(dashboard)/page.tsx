@@ -5,6 +5,7 @@ import { useProject } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
 import KpiCards from '@/components/dashboard/KpiCards';
 import BiCharts from '@/components/dashboard/BiCharts';
+import EngineeringDashboard from '@/components/dashboard/EngineeringDashboard';
 import { AlertTriangle, HardHat, RefreshCw, Building2, Plus } from 'lucide-react';
 import Link from 'next/link';
 
@@ -13,6 +14,8 @@ export default function DashboardPage() {
   const { selectedProject, loading: projectsLoading } = useProject();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const isFinancialRole = user?.role === 'ADMIN' || user?.role === 'FINANCEIRO';
 
   const fetchDashboard = async () => {
     if (!user?.companyId) {
@@ -65,13 +68,15 @@ export default function DashboardPage() {
             Cadastre sua primeira kitnet ou obra para começar a acompanhar orçamentos, compras e fluxo de caixa.
           </p>
         </div>
-        <Link
-          href="/obras"
-          className="inline-flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Cadastrar Primeira Obra</span>
-        </Link>
+        {isFinancialRole && (
+          <Link
+            href="/obras"
+            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Cadastrar Primeira Obra</span>
+          </Link>
+        )}
       </div>
     );
   }
@@ -83,7 +88,9 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
             <HardHat className="w-4 h-4" />
-            <span>Dashboard Executivo & BI</span>
+            <span>
+              {isFinancialRole ? 'Dashboard Executivo & BI' : 'Painel Técnico de Engenharia'}
+            </span>
           </div>
           <h1 className="text-2xl lg:text-3xl font-extrabold text-white">{selectedProject?.name}</h1>
           <p className="text-slate-300 text-xs lg:text-sm mt-1">
@@ -99,38 +106,49 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* KPI Cards (8 Cards) */}
-      <KpiCards kpis={data.kpis} />
+      {isFinancialRole ? (
+        <>
+          {/* KPI Cards (8 Cards Financeiros para Admin / Financeiro) */}
+          <KpiCards kpis={data.kpis} />
 
-      {/* Seção "Atenção Necessária" */}
-      {data.alerts && data.alerts.length > 0 && (
-        <div className="glass-card p-5 rounded-2xl border-l-4 border-l-amber-500 border border-slate-200 shadow-sm">
-          <h2 className="font-bold text-slate-900 text-base mb-3 flex items-center">
-            <AlertTriangle className="w-5 h-5 text-amber-500 mr-2" />
-            Atenção Necessária ({data.alerts.length})
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {data.alerts.map((alert: any, idx: number) => (
-              <div
-                key={idx}
-                className={`p-3.5 rounded-xl border text-xs ${
-                  alert.type === 'danger'
-                    ? 'bg-rose-50 border-rose-200 text-rose-900'
-                    : alert.type === 'warning'
-                    ? 'bg-amber-50 border-amber-200 text-amber-900'
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                }`}
-              >
-                <span className="font-bold text-sm block mb-1">{alert.title}</span>
-                <p className="opacity-90">{alert.message}</p>
+          {/* Seção "Atenção Necessária" */}
+          {data.alerts && data.alerts.length > 0 && (
+            <div className="glass-card p-5 rounded-2xl border-l-4 border-l-amber-500 border border-slate-200 shadow-sm">
+              <h2 className="font-bold text-slate-900 text-base mb-3 flex items-center">
+                <AlertTriangle className="w-5 h-5 text-amber-500 mr-2" />
+                Atenção Necessária ({data.alerts.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {data.alerts.map((alert: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-3.5 rounded-xl border text-xs ${
+                      alert.type === 'danger'
+                        ? 'bg-rose-50 border-rose-200 text-rose-900'
+                        : alert.type === 'warning'
+                        ? 'bg-amber-50 border-amber-200 text-amber-900'
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    }`}
+                  >
+                    <span className="font-bold text-sm block mb-1">{alert.title}</span>
+                    <p className="opacity-90">{alert.message}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* 6 Gráficos BI */}
-      <BiCharts charts={data.charts} />
+          {/* 6 Gráficos BI */}
+          <BiCharts charts={data.charts} />
+        </>
+      ) : (
+        /* Painel Técnico e Físico de Obra para Engenheiro / Comprador */
+        <EngineeringDashboard
+          engineering={data.engineering}
+          charts={data.charts}
+          projectName={selectedProject?.name}
+        />
+      )}
     </div>
   );
 }

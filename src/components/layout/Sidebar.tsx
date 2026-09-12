@@ -40,22 +40,22 @@ const OPERATIONAL_MENU = [
   { href: '/fornecedores', label: 'Fornecedores', icon: Users },
   { href: '/cotacoes', label: 'Cotações', icon: FileSpreadsheet },
   { href: '/compras', label: 'Compras', icon: ShoppingCart },
-  { href: '/contas-a-pagar', label: 'Contas a Pagar', icon: Receipt },
-  { href: '/pagamentos', label: 'Pagamentos', icon: CreditCard },
-  { href: '/fluxo-de-caixa', label: 'Fluxo de Caixa', icon: TrendingUp },
-  { href: '/relatorios', label: 'Relatórios', icon: BarChart3 },
+  { href: '/contas-a-pagar', label: 'Contas a Pagar', icon: Receipt, roles: ['ADMIN', 'FINANCEIRO'] },
+  { href: '/pagamentos', label: 'Pagamentos', icon: CreditCard, roles: ['ADMIN', 'FINANCEIRO'] },
+  { href: '/fluxo-de-caixa', label: 'Fluxo de Caixa', icon: TrendingUp, roles: ['ADMIN', 'FINANCEIRO'] },
+  { href: '/relatorios', label: 'Relatórios Financeiros', icon: BarChart3, roles: ['ADMIN', 'FINANCEIRO'] },
 ];
 
 const SAAS_MENU = [
-  { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS', adminOnly: true },
+  { href: '/planos', label: 'Planos & Assinatura', icon: Zap, badge: 'SaaS', roles: ['ADMIN'] },
   { href: '/empresas', label: 'Empresas (Tenants)', icon: Building, superAdminOnly: true },
-  { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck, adminOnly: true },
+  { href: '/equipe', label: 'Equipe & Permissões', icon: UserCheck, roles: ['ADMIN'] },
 ];
 
 const SYSTEM_MENU = [
-  { href: '/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings, roles: ['ADMIN'] },
   { href: '/auditoria', label: 'Auditoria', icon: History, superAdminOnly: true },
-  { href: '/importar-excel', label: 'Importar Excel', icon: FileUp },
+  { href: '/importar-excel', label: 'Importar Excel', icon: FileUp, roles: ['ADMIN'] },
 ];
 
 export default function Sidebar() {
@@ -75,6 +75,15 @@ export default function Sidebar() {
   };
 
   const isAdmin = userProfile.role === 'ADMIN' || isSuper;
+
+  const filterByRole = (item: any) => {
+    if (item.superAdminOnly && !isSuper) return false;
+    if (item.roles) {
+      if (isSuper) return true;
+      return item.roles.includes(userProfile.role);
+    }
+    return true;
+  };
 
   const renderLink = (item: any) => {
     const Icon = item.icon;
@@ -166,30 +175,30 @@ export default function Sidebar() {
             {!collapsed && (
               <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Operacional</span>
             )}
-            {OPERATIONAL_MENU.map(renderLink)}
+            {OPERATIONAL_MENU.filter(filterByRole).map(renderLink)}
           </div>
 
           {/* Seção SaaS & Gestão */}
-          {isAdmin && (
+          {SAAS_MENU.filter(filterByRole).length > 0 && (
             <div className="space-y-1 pt-2 border-t border-slate-800/60">
               {!collapsed && (
                 <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
                   {isSuper ? 'Plataforma SaaS' : 'Gestão da Empresa'}
                 </span>
               )}
-              {SAAS_MENU.filter((item: any) => !item.superAdminOnly || isSuper).map(renderLink)}
+              {SAAS_MENU.filter(filterByRole).map(renderLink)}
             </div>
           )}
 
           {/* Seção Sistema */}
-          <div className="space-y-1 pt-2 border-t border-slate-800/60">
-            {!collapsed && (
-              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Sistema</span>
-            )}
-            {SYSTEM_MENU.filter(
-              (item: any) => (!item.superAdminOnly || isSuper) && (!item.adminOnly || isAdmin)
-            ).map(renderLink)}
-          </div>
+          {SYSTEM_MENU.filter(filterByRole).length > 0 && (
+            <div className="space-y-1 pt-2 border-t border-slate-800/60">
+              {!collapsed && (
+                <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Sistema</span>
+              )}
+              {SYSTEM_MENU.filter(filterByRole).map(renderLink)}
+            </div>
+          )}
 
         </nav>
 

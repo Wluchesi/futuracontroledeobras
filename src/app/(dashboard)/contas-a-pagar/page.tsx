@@ -2,15 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { Receipt, Search, CheckCircle2, Clock, AlertCircle, CreditCard, Edit3, RotateCcw, Calendar, DollarSign } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/calculations';
 
 export default function ContasAPagarPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const { selectedProject } = useProject();
   const [payables, setPayables] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const isAllowed = user?.role === 'ADMIN' || user?.role === 'FINANCEIRO' || isSuperAdmin(user);
+
+  useEffect(() => {
+    if (user && !isAllowed) {
+      router.push('/');
+    }
+  }, [user, isAllowed, router]);
+
+  if (user && !isAllowed) {
+    return null;
+  }
 
   // Modal Baixa / Pagamento (Parcial ou Total)
   const [showPaymentModal, setShowPaymentModal] = useState(false);

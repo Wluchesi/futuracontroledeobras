@@ -2,14 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { TrendingUp, ArrowUpRight, ArrowDownLeft, Wallet, ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/calculations';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function FluxoDeCaixaPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const { selectedProject } = useProject();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const isAllowed = user?.role === 'ADMIN' || user?.role === 'FINANCEIRO' || isSuperAdmin(user);
+
+  useEffect(() => {
+    if (user && !isAllowed) {
+      router.push('/');
+    }
+  }, [user, isAllowed, router]);
+
+  if (user && !isAllowed) {
+    return null;
+  }
 
   useEffect(() => {
     async function fetchCashFlow() {

@@ -2,15 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { BarChart3, Download, Printer, FileSpreadsheet, Users, FolderKanban, Calculator } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import * as XLSX from 'xlsx';
 
 export default function RelatoriosPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const { selectedProject } = useProject();
   const [reportType, setReportType] = useState('cost-center');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isAllowed = user?.role === 'ADMIN' || user?.role === 'FINANCEIRO' || isSuperAdmin(user);
+
+  useEffect(() => {
+    if (user && !isAllowed) {
+      router.push('/');
+    }
+  }, [user, isAllowed, router]);
+
+  if (user && !isAllowed) {
+    return null;
+  }
 
   useEffect(() => {
     async function fetchReport() {

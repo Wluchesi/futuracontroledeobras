@@ -1,17 +1,33 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { FileUp, CheckCircle, UploadCloud, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function ImportarExcelPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const { selectedProject } = useProject();
   const [targetEntity, setTargetEntity] = useState('budget');
   const [parsedRows, setParsedRows] = useState<any[]>([]);
   const [fileName, setFileName] = useState('');
   const [importSuccess, setImportSuccess] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const isAdmin = user?.role === 'ADMIN' || isSuperAdmin(user);
+
+  useEffect(() => {
+    if (user && !isAdmin) {
+      router.push('/');
+    }
+  }, [user, isAdmin, router]);
+
+  if (user && !isAdmin) {
+    return null;
+  }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

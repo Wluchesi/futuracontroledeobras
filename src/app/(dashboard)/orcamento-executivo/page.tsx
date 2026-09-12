@@ -108,6 +108,7 @@ export default function OrcamentoExecutivoPage() {
     return matchesSearch && matchesCc;
   });
 
+  const isFinancialRole = user?.role === 'ADMIN' || user?.role === 'FINANCEIRO';
   const totalOrçado = filteredItems.reduce((acc, i) => acc + (i.contractedTotal || 0), 0);
   const totalComprado = filteredItems.reduce((acc, i) => acc + (i.purchasedTotal || 0), 0);
   const totalPago = filteredItems.reduce((acc, i) => acc + (i.paidTotal || 0), 0);
@@ -171,28 +172,30 @@ export default function OrcamentoExecutivoPage() {
         });
         setShowNewSupplierBox(false);
       } else {
-        alert(data.error || 'Erro ao cadastrar fornecedor.');
+        const err = await res.json();
+        alert(err.error || 'Erro ao cadastrar fornecedor.');
       }
     } catch (e) {
       console.error(e);
-      alert('Erro de conexão ao cadastrar fornecedor.');
+      alert('Erro de rede ao salvar fornecedor.');
     } finally {
       setSavingSupplier(false);
     }
   };
 
+  // Duplicar Item do Orçamento Executivo
   const handleDuplicateItem = (item: any) => {
     const nextCode = `ORC-${String(items.length + 1).padStart(4, '0')}`;
     setFormData({
       id: '',
       code: nextCode,
-      costCenterId: item.costCenterId,
-      stage: item.stage,
+      costCenterId: item.costCenterId || '',
+      stage: item.stage || '',
       itemName: `${item.itemName} (Cópia)`,
       description: item.description || '',
-      unit: item.unit,
-      quantity: item.quantity,
-      contractedUnitPrice: item.contractedUnitPrice,
+      unit: item.unit || 'un',
+      quantity: item.quantity || 1,
+      contractedUnitPrice: item.contractedUnitPrice || 0,
       chosenSupplierId: item.chosenSupplierId || '',
       notes: item.notes || '',
     });
@@ -205,7 +208,7 @@ export default function OrcamentoExecutivoPage() {
   const handleDeleteItem = async (id: string, itemName: string) => {
     if (
       !confirm(
-        `Deseja realmente remover o item "${itemName}" do orçamento? Esta ação também removerá as cotações vinculadas a ele.`
+        `Tem certeza que deseja excluir o item "${itemName}"? Esta ação removerá também as cotações associadas.`
       )
     ) {
       return;
@@ -239,7 +242,7 @@ export default function OrcamentoExecutivoPage() {
             Orçamento Executivo — {selectedProject?.name}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Controle de serviços, cotações, preços contratados e saldos orçamentários
+            Controle de serviços, cotações, preços contratados e acompanhamento da obra
           </p>
         </div>
         <button
@@ -274,22 +277,47 @@ export default function OrcamentoExecutivoPage() {
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="glass-card p-4 rounded-2xl border border-slate-200">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Total Contratado</span>
-          <div className="text-xl font-extrabold text-slate-900 mt-1">{formatCurrency(totalOrçado)}</div>
-        </div>
-        <div className="glass-card p-4 rounded-2xl border border-slate-200">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Total Comprado</span>
-          <div className="text-xl font-extrabold text-indigo-600 mt-1">{formatCurrency(totalComprado)}</div>
-        </div>
-        <div className="glass-card p-4 rounded-2xl border border-slate-200">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Total Pago</span>
-          <div className="text-xl font-extrabold text-emerald-600 mt-1">{formatCurrency(totalPago)}</div>
-        </div>
-        <div className="glass-card p-4 rounded-2xl border border-slate-200">
-          <span className="text-[11px] font-bold text-slate-400 uppercase">Saldo a Pagar</span>
-          <div className="text-xl font-extrabold text-cyan-600 mt-1">{formatCurrency(saldoTotal)}</div>
-        </div>
+        {isFinancialRole ? (
+          <>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Total Contratado</span>
+              <div className="text-xl font-extrabold text-slate-900 mt-1">{formatCurrency(totalOrçado)}</div>
+            </div>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Total Comprado</span>
+              <div className="text-xl font-extrabold text-indigo-600 mt-1">{formatCurrency(totalComprado)}</div>
+            </div>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Total Pago</span>
+              <div className="text-xl font-extrabold text-emerald-600 mt-1">{formatCurrency(totalPago)}</div>
+            </div>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Saldo a Pagar</span>
+              <div className="text-xl font-extrabold text-cyan-600 mt-1">{formatCurrency(saldoTotal)}</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Total de Itens</span>
+              <div className="text-xl font-extrabold text-slate-900 mt-1">{filteredItems.length} itens</div>
+            </div>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Total Orçado</span>
+              <div className="text-xl font-extrabold text-blue-600 mt-1">{formatCurrency(totalOrçado)}</div>
+            </div>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Total Comprado</span>
+              <div className="text-xl font-extrabold text-indigo-600 mt-1">{formatCurrency(totalComprado)}</div>
+            </div>
+            <div className="glass-card p-4 rounded-2xl border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Itens com Cotações</span>
+              <div className="text-xl font-extrabold text-emerald-600 mt-1">
+                {filteredItems.filter((i) => i.quotationCount > 0).length} itens
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Filtros */}
@@ -332,8 +360,14 @@ export default function OrcamentoExecutivoPage() {
                 <th className="py-3 px-3 text-right">Preço Contratado</th>
                 <th className="py-3 px-3 text-right">Total Contratado</th>
                 <th className="py-3 px-3 text-right">Comprado</th>
-                <th className="py-3 px-3 text-right">Pago</th>
-                <th className="py-3 px-3 text-right">Saldo</th>
+                {isFinancialRole ? (
+                  <>
+                    <th className="py-3 px-3 text-right">Pago</th>
+                    <th className="py-3 px-3 text-right">Saldo</th>
+                  </>
+                ) : (
+                  <th className="py-3 px-3 text-center">Status Físico</th>
+                )}
                 <th className="py-3 px-3 text-center">Cotações</th>
                 <th className="py-3 px-3 text-right">Ações</th>
               </tr>
@@ -356,8 +390,30 @@ export default function OrcamentoExecutivoPage() {
                   <td className="py-3 px-3 text-right font-medium">{formatCurrency(item.contractedUnitPrice)}</td>
                   <td className="py-3 px-3 text-right font-bold text-slate-900">{formatCurrency(item.contractedTotal)}</td>
                   <td className="py-3 px-3 text-right text-indigo-600 font-semibold">{formatCurrency(item.purchasedTotal)}</td>
-                  <td className="py-3 px-3 text-right text-emerald-600 font-semibold">{formatCurrency(item.paidTotal)}</td>
-                  <td className="py-3 px-3 text-right font-bold text-cyan-700">{formatCurrency(item.balance)}</td>
+                  {isFinancialRole ? (
+                    <>
+                      <td className="py-3 px-3 text-right text-emerald-600 font-semibold">{formatCurrency(item.paidTotal)}</td>
+                      <td className="py-3 px-3 text-right font-bold text-cyan-700">{formatCurrency(item.balance)}</td>
+                    </>
+                  ) : (
+                    <td className="py-3 px-3 text-center">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          item.status === 'CONCLUIDO'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : item.status === 'EM_ANDAMENTO'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        {item.status === 'CONCLUIDO'
+                          ? 'Concluído'
+                          : item.status === 'EM_ANDAMENTO'
+                          ? 'Em Andamento'
+                          : 'Planejado'}
+                      </span>
+                    </td>
+                  )}
                   <td className="py-3 px-3 text-center">
                     <Link
                       href={`/cotacoes?budgetItemId=${item.id}`}

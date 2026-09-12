@@ -371,6 +371,26 @@ export async function GET(request: Request) {
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
 
+    // Métricas Operacionais / Técnicas para Engenharia (sem dados financeiros confidenciais da conta)
+    const plannedItemsCount = budgetItems.filter((i) => !i.status || i.status === 'PLANEJADO').length;
+    const inProgressItemsCount = budgetItems.filter((i) => i.status === 'EM_ANDAMENTO').length;
+    const completedItemsCount = budgetItems.filter((i) => i.status === 'CONCLUIDO').length;
+
+    const engineering = {
+      totalItems: budgetItems.length,
+      plannedItems: plannedItemsCount,
+      inProgressItems: inProgressItemsCount,
+      completedItems: completedItemsCount,
+      quotationsCount: budgetItems.reduce((sum, i) => sum + (i.quotations?.length || 0), 0),
+      purchasesCount: purchases.length,
+      activeStagesCount: activeCostCenters.length,
+      statusChart: [
+        { name: 'Concluídos', value: completedItemsCount, color: '#10B981' },
+        { name: 'Em Andamento', value: inProgressItemsCount, color: '#3B82F6' },
+        { name: 'Planejados', value: plannedItemsCount, color: '#94A3B8' },
+      ],
+    };
+
     return NextResponse.json({
       kpis: {
         totalContracted,
@@ -391,6 +411,7 @@ export async function GET(request: Request) {
         chart5: cashFlowData,
         chart6: chart6Data,
       },
+      engineering,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
