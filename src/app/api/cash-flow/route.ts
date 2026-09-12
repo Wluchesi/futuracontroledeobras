@@ -7,13 +7,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
 
+    const emptyResponse = {
+      summary: {
+        initialBalance: 0,
+        totalEntries: 0,
+        totalPaid: 0,
+        totalPending: 0,
+        totalOverdue: 0,
+        realizedBalance: 0,
+        projectedBalance: 0,
+      },
+      timeline: [],
+    };
+
     if (!projectId) {
-      return NextResponse.json([]);
+      return NextResponse.json(emptyResponse);
     }
 
     const project = await prisma.project.findUnique({ where: { id: projectId } });
     if (!project) {
-      return NextResponse.json([]);
+      return NextResponse.json(emptyResponse);
     }
 
     const accountsPayable = await prisma.accountPayable.findMany({
