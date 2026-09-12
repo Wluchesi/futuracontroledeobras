@@ -62,9 +62,9 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
       } else {
         setError(data?.error || 'Erro ao comunicar com o servidor de pagamentos.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Checkout error:', e);
-      setError('Erro de conexão ao gerar o PIX.');
+      setError(e?.message ? `Erro de conexão: ${e.message}` : 'Erro ao comunicar com o servidor de pagamentos.');
     } finally {
       setLoading(false);
     }
@@ -108,9 +108,9 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
       } else {
         setError(data?.error || 'Erro ao confirmar pagamento. Tente novamente.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Webhook error:', e);
-      setError('Erro de conexão ao verificar o pagamento.');
+      setError(e?.message ? `Erro de conexão: ${e.message}` : 'Erro ao verificar o pagamento.');
     } finally {
       setLoading(false);
     }
@@ -143,9 +143,9 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
       } else {
         setError(data?.error || 'Pagamento recusado pelo gateway.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Credit card error:', e);
-      setError('Erro de conexão ao processar cartão.');
+      setError(e?.message ? `Erro de conexão: ${e.message}` : 'Erro ao processar cartão.');
     } finally {
       setLoading(false);
     }
@@ -168,7 +168,7 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
           <div>
             <div className="flex items-center space-x-2 text-xs font-extrabold text-emerald-400 uppercase tracking-wider mb-1">
               <ShieldCheck className="w-4 h-4" />
-              <span>Checkout Seguro SaaS</span>
+              <span>Checkout Seguro</span>
             </div>
             <h2 className="text-xl font-extrabold text-white">Assinar {planTitle}</h2>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -176,8 +176,11 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
             </p>
           </div>
           <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition"
+            onClick={() => {
+              onClose();
+              if (success) window.location.reload();
+            }}
+            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -194,8 +197,11 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
               Sua empresa foi atualizada com sucesso para o <strong className="text-emerald-400">{planTitle}</strong>. Aproveite todos os recursos liberados!
             </p>
             <button
-              onClick={onClose}
-              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition"
+              onClick={() => {
+                onClose();
+                window.location.reload();
+              }}
+              className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition cursor-pointer"
             >
               Voltar para o Painel
             </button>

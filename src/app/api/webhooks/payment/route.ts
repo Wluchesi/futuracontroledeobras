@@ -8,7 +8,7 @@ export async function GET() {
 // Mapeia planId para dados do plano
 function getPlanData(planId: string) {
   if (planId === 'Premium') {
-    return { planName: 'Kitneteiro Premium (5 Obras / SINAPI / IA)', maxProjects: 5, maxUsers: 50 };
+    return { planName: 'Kitneteiro Premium (5 Obras / SINAPI)', maxProjects: 5, maxUsers: 50 };
   } else if (planId === 'Teste1Real') {
     return { planName: 'Kitneteiro Premium (Teste R$ 1,00)', maxProjects: 5, maxUsers: 50 };
   } else if (planId === 'Gratuito') {
@@ -109,12 +109,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'Evento recebido. Aguardando status de confirmação.' });
     }
 
-    // Se tiver um transactionId do MP, valida o pagamento real antes de ativar
-    if (transactionId && mpAccessToken && !transactionId.startsWith('tx_mp_sim_')) {
+    // Se tiver um transactionId do MP, valida o pagamento real antes de ativar (ignora testes)
+    const isTestTx = !transactionId || transactionId.startsWith('tx_mp_sim_') || transactionId.startsWith('tx_card_') || planId === 'Teste1Real';
+
+    if (!isTestTx && transactionId && mpAccessToken) {
       console.log(`[Webhook Manual] Verificando transação ${transactionId} no Mercado Pago...`);
       try {
         const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${transactionId}`, {
           headers: { 'Authorization': `Bearer ${mpAccessToken}` },
+          signal: AbortSignal.timeout(3500),
         });
 
         if (mpRes.ok) {
