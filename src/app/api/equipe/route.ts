@@ -98,3 +98,110 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao cadastrar membro da equipe.' }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const { id, companyId, name, email, password, role } = await request.json();
+
+    if (!id || !name || !email) {
+      return NextResponse.json({ error: 'ID, Nome e E-mail são obrigatórios.' }, { status: 400 });
+    }
+
+    const userToUpdate = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!userToUpdate) {
+      return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+    }
+
+    if (companyId && userToUpdate.companyId !== companyId) {
+      return NextResponse.json({ error: 'Usuário não pertence a esta empresa.' }, { status: 403 });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Se mudou de e-mail, verificar duplicidade
+    if (normalizedEmail !== userToUpdate.email) {
+      const existing = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (existing && existing.id !== id) {
+        return NextResponse.json({ error: 'Este e-mail já está sendo utilizado por outro usuário.' }, { status: 400 });
+      }
+    }
+
+    const updateData: any = {
+      name,
+      email: normalizedEmail,
+      role: role || userToUpdate.role,
+    };
+
+    if (password && password.trim().length > 0) {
+      updateData.passwordHash = await bcrypt.hash(password.trim(), 10);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ success: true, user: updatedUser });
+  } catch (error: any) {
+    console.error('Error updating team user:', error);
+    return NextResponse.json({ error: 'Erro ao atualizar dados do membro.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const companyId = searchParams.get('companyId');
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID do usuário é obrigatório.' }, { status: 400 });
+    }
+
+    const userToDelete = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!userToDelete) {
+      return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+    }
+
+    if (companyId && userToDelete.companyId !== companyId) {
+      return NextResponse.json({ error: 'Usuário não pertence a esta empresa.' }, { status: 403 });
+    }
+
+    // Se for ADMIN, garantir que a empresa não fique sem nenhum ADMIN
+    if (userToDelete.role === 'ADMIN') {
+      const adminCount = await prisma.user.count({
+        where: { companyId: userToDelete.companyId, role: 'ADMIN' },
+      });
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          { error: 'Não é possível remover o único Administrador da construtora. Defina outro administrador antes.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting team user:', error);
+    return NextResponse.json({ error: 'Erro ao remover membro da equipe.' }, { status: 500 });
+  }
+}
