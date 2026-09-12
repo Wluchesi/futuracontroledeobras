@@ -41,6 +41,63 @@ function ComprasContent() {
     isDirectPurchase: false,
   });
 
+  const [showNewSupplierBox, setShowNewSupplierBox] = useState(false);
+  const [savingSupplier, setSavingSupplier] = useState(false);
+  const [newSupplierData, setNewSupplierData] = useState({
+    corporateName: '',
+    tradeName: '',
+    supplierType: 'MATERIAL',
+    phone: '',
+    taxId: '',
+  });
+
+  const handleCreateSupplier = async () => {
+    if (!newSupplierData.corporateName.trim()) {
+      alert('Por favor, informe a Razão Social ou Nome do fornecedor.');
+      return;
+    }
+
+    try {
+      setSavingSupplier(true);
+      const companyId = user?.companyId || (selectedProject as any)?.companyId;
+      const res = await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newSupplierData,
+          companyId,
+          projectId: selectedProject?.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.id) {
+        setSuppliers((prev) => {
+          const updated = [...prev, data];
+          return updated.sort((a, b) =>
+            (a.tradeName || a.corporateName || '').localeCompare(b.tradeName || b.corporateName || '')
+          );
+        });
+        setFormData((prev) => ({ ...prev, supplierId: data.id }));
+        setNewSupplierData({
+          corporateName: '',
+          tradeName: '',
+          supplierType: 'MATERIAL',
+          phone: '',
+          taxId: '',
+        });
+        setShowNewSupplierBox(false);
+      } else {
+        alert(data.error || 'Erro ao cadastrar fornecedor.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro de conexão ao cadastrar fornecedor.');
+    } finally {
+      setSavingSupplier(false);
+    }
+  };
+
   const fetchData = async () => {
     if (!selectedProject) return;
     try {
@@ -113,6 +170,7 @@ function ComprasContent() {
       forceConfirm: false,
       isDirectPurchase: false,
     });
+    setShowNewSupplierBox(false);
     setShowModal(true);
   };
 
@@ -201,6 +259,7 @@ function ComprasContent() {
                 forceConfirm: false,
                 isDirectPurchase: true,
               });
+              setShowNewSupplierBox(false);
               setShowModal(true);
             }}
             className="flex items-center justify-center space-x-1.5 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded-xl shadow-xs transition"
@@ -230,6 +289,7 @@ function ComprasContent() {
                 forceConfirm: false,
                 isDirectPurchase: false,
               });
+              setShowNewSupplierBox(false);
               setShowModal(true);
             }}
             className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl shadow-xs transition"
@@ -318,7 +378,7 @@ function ComprasContent() {
       {/* Modal Formulário de Compra */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-slate-900 flex items-center">
               {formData.isDirectPurchase ? (
                 <>
@@ -347,19 +407,172 @@ function ComprasContent() {
                 </select>
               </div>
 
-              <div>
-                <label className="font-semibold block mb-1">Fornecedor</label>
-                <select
-                  value={formData.supplierId}
-                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                  className="w-full p-2.5 border rounded-xl font-semibold"
-                >
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.tradeName || s.corporateName} ({s.supplierType})
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold block text-slate-800 dark:text-slate-200">
+                    Fornecedor
+                  </label>
+                  {!showNewSupplierBox && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSupplierBox(true)}
+                      className="text-xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Cadastrar novo fornecedor</span>
+                    </button>
+                  )}
+                </div>
+
+                {showNewSupplierBox ? (
+                  <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-2xl space-y-2.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between border-b border-emerald-200/80 dark:border-emerald-800/80 pb-1.5">
+                      <span className="font-bold text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-1.5">
+                        <Plus className="w-4 h-4 text-emerald-600" /> Cadastrar Fornecedor Rápido
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewSupplierBox(false)}
+                        className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs font-semibold cursor-pointer"
+                      >
+                        ✕ Cancelar
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="font-semibold block mb-1 text-[11px] text-slate-700 dark:text-slate-300">
+                          Razão Social / Nome <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newSupplierData.corporateName}
+                          onChange={(e) =>
+                            setNewSupplierData({ ...newSupplierData, corporateName: e.target.value })
+                          }
+                          placeholder="Ex: Comercial Silva Ltda"
+                          className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold block mb-1 text-[11px] text-slate-700 dark:text-slate-300">
+                          Nome Fantasia
+                        </label>
+                        <input
+                          type="text"
+                          value={newSupplierData.tradeName}
+                          onChange={(e) =>
+                            setNewSupplierData({ ...newSupplierData, tradeName: e.target.value })
+                          }
+                          placeholder="Ex: Madeireira Silva"
+                          className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="font-semibold block mb-1 text-[11px] text-slate-700 dark:text-slate-300">
+                          Tipo
+                        </label>
+                        <select
+                          value={newSupplierData.supplierType}
+                          onChange={(e) =>
+                            setNewSupplierData({ ...newSupplierData, supplierType: e.target.value })
+                          }
+                          className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs font-medium"
+                        >
+                          <option value="MATERIAL">Material</option>
+                          <option value="MAO_DE_OBRA">Mão de Obra</option>
+                          <option value="SERVICO">Serviço</option>
+                          <option value="EQUIPAMENTO">Equipamento</option>
+                          <option value="PROJETO">Projeto</option>
+                          <option value="OUTROS">Outros</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="font-semibold block mb-1 text-[11px] text-slate-700 dark:text-slate-300">
+                          Telefone / WhatsApp
+                        </label>
+                        <input
+                          type="text"
+                          value={newSupplierData.phone}
+                          onChange={(e) =>
+                            setNewSupplierData({ ...newSupplierData, phone: e.target.value })
+                          }
+                          placeholder="(35) 99999-9999"
+                          className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold block mb-1 text-[11px] text-slate-700 dark:text-slate-300">
+                          CNPJ ou CPF
+                        </label>
+                        <input
+                          type="text"
+                          value={newSupplierData.taxId}
+                          onChange={(e) =>
+                            setNewSupplierData({ ...newSupplierData, taxId: e.target.value })
+                          }
+                          placeholder="00.000.000/0001-00"
+                          className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewSupplierBox(false)}
+                        className="px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs cursor-pointer font-medium"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingSupplier}
+                        onClick={handleCreateSupplier}
+                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                      >
+                        {savingSupplier ? 'Salvando...' : '✓ Salvar e Selecionar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.supplierId}
+                      onChange={(e) => {
+                        if (e.target.value === '__NEW__') {
+                          setShowNewSupplierBox(true);
+                        } else {
+                          setFormData({ ...formData, supplierId: e.target.value });
+                        }
+                      }}
+                      className="flex-1 p-2.5 border border-slate-300 dark:border-slate-700 rounded-xl font-medium text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    >
+                      <option value="">Selecione o fornecedor</option>
+                      <option value="__NEW__" className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950">
+                        ➕ Cadastrar novo fornecedor...
+                      </option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.tradeName || s.corporateName} ({s.supplierType})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSupplierBox(true)}
+                      className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shadow-xs"
+                      title="Cadastrar novo fornecedor agora"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Novo</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">

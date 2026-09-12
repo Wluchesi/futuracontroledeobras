@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAccountPayableStatus } from '@/lib/calculations';
 import { logAuditAction } from '@/lib/audit';
+import { syncBudgetItemTotals } from '@/lib/budget-sync';
 
 export async function GET(request: Request) {
   try {
@@ -153,10 +154,17 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID é obrigatório.' }, { status: 400 });
 
-    const current = await prisma.accountPayable.findUnique({ where: { id } });
+    const current = await prisma.accountPayable.findUnique({
+      where: { id },
+      include: { purchase: true },
+    });
     if (!current) return NextResponse.json({ error: 'Conta não encontrada.' }, { status: 404 });
 
     await prisma.accountPayable.delete({ where: { id } });
+
+    if (current.purchase?.budgetItemId) {
+      await syncBudgetItemTotals(current.purchase.budgetItemId);
+    }
 
     await logAuditAction({
       action: 'DELETE',

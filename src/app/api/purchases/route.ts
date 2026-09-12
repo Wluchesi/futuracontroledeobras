@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logAuditAction } from '@/lib/audit';
 import { getAccountPayableStatus } from '@/lib/calculations';
+import { syncBudgetItemTotals } from '@/lib/budget-sync';
 
 export async function GET(request: Request) {
   try {
@@ -149,13 +150,7 @@ export async function POST(request: Request) {
       },
     });
 
-    await prisma.budgetItem.update({
-      where: { id: budgetItemId },
-      data: {
-        purchasedTotal: projectedPurchased,
-        status: 'EM_ANDAMENTO',
-      },
-    });
+    await syncBudgetItemTotals(budgetItemId);
 
     const payableStatus = getAccountPayableStatus(effectiveDueDate);
 
@@ -234,18 +229,9 @@ export async function PUT(request: Request) {
       },
     });
 
-    // Atualizar item do orçamento afetado (diferença)
-    const amountDiff = totalAmount - currentPurchase.totalAmount;
-    if (amountDiff !== 0 && currentPurchase.budgetItemId) {
-      const budgetItem = await prisma.budgetItem.findUnique({ where: { id: currentPurchase.budgetItemId } });
-      if (budgetItem) {
-        await prisma.budgetItem.update({
-          where: { id: currentPurchase.budgetItemId },
-          data: {
-            purchasedTotal: Math.max(0, budgetItem.purchasedTotal + amountDiff),
-          },
-        });
-      }
+    // Atualizar item do orçamento afetado
+    if (currentPurchase.budgetItemId) {
+      await syncBudgetItemTotals(currentPurchase.budgetItemId);
     }
 
     // Atualizar Contas a Pagar vinculadas
@@ -305,14 +291,9 @@ export async function DELETE(request: Request) {
     // 2. Deletar compra
     await prisma.purchase.delete({ where: { id } });
 
-    // 3. Atualizar item de orçamento
-    if (purchase.budgetItemId && purchase.budgetItem) {
-      await prisma.budgetItem.update({
-        where: { id: purchase.budgetItemId },
-        data: {
-          purchasedTotal: Math.max(0, purchase.budgetItem.purchasedTotal - purchase.totalAmount),
-        },
-      });
+    // 3. Atualizar item de orçamento com base nas compras e pagamentos restantes
+    if (purchase.budgetItemId) {
+      await syncBudgetItemTotals(purchase.budgetItemId);
     }
 
     await logAuditAction({

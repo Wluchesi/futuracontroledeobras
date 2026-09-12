@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAccountPayableStatus } from '@/lib/calculations';
+import { calculateBudgetItemTotals } from '@/lib/budget-sync';
 
 export async function GET(request: Request) {
   try {
@@ -13,12 +14,32 @@ export async function GET(request: Request) {
     if (type === 'cost-center') {
       const budgetItems = await prisma.budgetItem.findMany({
         where: whereProject,
-        include: { costCenter: true },
+        include: {
+          costCenter: true,
+          purchases: {
+            select: {
+              id: true,
+              totalAmount: true,
+              accountsPayable: {
+                select: {
+                  id: true,
+                  payments: {
+                    select: {
+                      id: true,
+                      amountPaid: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       const costCenterMap: Record<string, any> = {};
 
       budgetItems.forEach((item) => {
+        const totals = calculateBudgetItemTotals(item);
         const code = item.costCenter.code;
         if (!costCenterMap[code]) {
           costCenterMap[code] = {
@@ -32,9 +53,9 @@ export async function GET(request: Request) {
             itemCount: 0,
           };
         }
-        costCenterMap[code].contracted += item.contractedTotal;
-        costCenterMap[code].purchased += item.purchasedTotal;
-        costCenterMap[code].paid += item.paidTotal;
+        costCenterMap[code].contracted += totals.contractedTotal;
+        costCenterMap[code].purchased += totals.purchasedTotal;
+        costCenterMap[code].paid += totals.paidTotal;
         costCenterMap[code].itemCount++;
       });
 
@@ -103,14 +124,31 @@ export async function GET(request: Request) {
           costCenter: true,
           chosenSupplier: true,
           quotations: true,
+          purchases: {
+            select: {
+              id: true,
+              totalAmount: true,
+              accountsPayable: {
+                select: {
+                  id: true,
+                  payments: {
+                    select: {
+                      id: true,
+                      amountPaid: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         orderBy: { code: 'asc' },
       });
 
       const reportData = budgetItems.map((item) => {
+        const totals = calculateBudgetItemTotals(item);
         const prices = item.quotations.map((q) => q.finalPrice);
         const lowestQuotation = prices.length > 0 ? Math.min(...prices) : 0;
-        const balance = Math.max(0, item.contractedTotal - item.paidTotal);
 
         return {
           code: item.code,
@@ -120,11 +158,11 @@ export async function GET(request: Request) {
           quantity: item.quantity,
           unit: item.unit,
           contractedUnitPrice: item.contractedUnitPrice,
-          contractedTotal: item.contractedTotal,
+          contractedTotal: totals.contractedTotal,
           lowestQuotation,
-          purchasedTotal: item.purchasedTotal,
-          paidTotal: item.paidTotal,
-          balance,
+          purchasedTotal: totals.purchasedTotal,
+          paidTotal: totals.paidTotal,
+          balance: totals.balance,
           supplier: item.chosenSupplier ? item.chosenSupplier.tradeName || item.chosenSupplier.corporateName : '-',
         };
       });

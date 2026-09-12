@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logAuditAction } from '@/lib/audit';
 import { getAccountPayableStatus } from '@/lib/calculations';
+import { syncBudgetItemTotals } from '@/lib/budget-sync';
 
 export async function GET(request: Request) {
   try {
@@ -104,20 +105,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Atualizar Total Pago e Saldo do Orçamento se houver compra vinculada
-    if (payable.purchase && payable.purchase.budgetItem) {
-      const budgetItem = payable.purchase.budgetItem;
-      const newPaidTotalBudget = budgetItem.paidTotal + paidVal;
-      const newBalanceBudget = Math.max(0, budgetItem.contractedTotal - newPaidTotalBudget);
-
-      await prisma.budgetItem.update({
-        where: { id: budgetItem.id },
-        data: {
-          paidTotal: newPaidTotalBudget,
-          balance: newBalanceBudget,
-          status: newBalanceBudget === 0 ? 'CONCLUIDO' : 'EM_ANDAMENTO',
-        },
-      });
+    // 4. Atualizar Total Pago e Saldo do Orçamento com precisão
+    if (payable.purchase && payable.purchase.budgetItemId) {
+      await syncBudgetItemTotals(payable.purchase.budgetItemId);
     }
 
     await logAuditAction({
@@ -180,20 +170,9 @@ export async function DELETE(request: Request) {
       },
     });
 
-    // 3. Estornar saldo do Orçamento
-    if (payable.purchase && payable.purchase.budgetItem) {
-      const budgetItem = payable.purchase.budgetItem;
-      const newPaidTotalBudget = Math.max(0, budgetItem.paidTotal - paidVal);
-      const newBalanceBudget = Math.max(0, budgetItem.contractedTotal - newPaidTotalBudget);
-
-      await prisma.budgetItem.update({
-        where: { id: budgetItem.id },
-        data: {
-          paidTotal: newPaidTotalBudget,
-          balance: newBalanceBudget,
-          status: newPaidTotalBudget > 0 ? 'EM_ANDAMENTO' : 'PLANEJADO',
-        },
-      });
+    // 3. Estornar e recalcular saldo do Orçamento
+    if (payable.purchase && payable.purchase.budgetItemId) {
+      await syncBudgetItemTotals(payable.purchase.budgetItemId);
     }
 
     await logAuditAction({

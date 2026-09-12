@@ -34,8 +34,17 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { companyId, corporateName, tradeName, taxId, contactPerson, phone, whatsapp, email, address, city, state, supplierType, notes } = body;
+    let effCompanyId = companyId;
+    if (!effCompanyId && body.projectId) {
+      const proj = await prisma.project.findUnique({ where: { id: body.projectId } });
+      if (proj) effCompanyId = proj.companyId;
+    }
+    if (!effCompanyId) {
+      const firstCompany = await prisma.company.findFirst();
+      if (firstCompany) effCompanyId = firstCompany.id;
+    }
 
-    if (!companyId) {
+    if (!effCompanyId) {
       return NextResponse.json({ error: 'ID da empresa é obrigatório.' }, { status: 400 });
     }
 
@@ -45,9 +54,9 @@ export async function POST(request: Request) {
 
     const created = await prisma.supplier.create({
       data: {
-        companyId,
+        companyId: effCompanyId,
         corporateName,
-        tradeName,
+        tradeName: tradeName || corporateName,
         taxId,
         contactPerson,
         phone,

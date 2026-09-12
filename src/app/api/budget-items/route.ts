@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logAuditAction } from '@/lib/audit';
+import { calculateBudgetItemTotals } from '@/lib/budget-sync';
 
 export async function GET(request: Request) {
   try {
@@ -29,28 +30,40 @@ export async function GET(request: Request) {
             id: true,
             totalAmount: true,
             quantity: true,
+            accountsPayable: {
+              select: {
+                id: true,
+                payments: {
+                  select: {
+                    id: true,
+                    amountPaid: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
       orderBy: [{ code: 'asc' }],
     });
 
-    // Enriquecer dados com cálculos automáticos
+    // Enriquecer dados com cálculos automáticos baseados nas compras e pagamentos reais
     const enriched = budgetItems.map((item) => {
+      const totals = calculateBudgetItemTotals(item);
       const quotationsPrices = item.quotations.map((q) => q.finalPrice);
       const lowestQuotation = quotationsPrices.length > 0 ? Math.min(...quotationsPrices) : 0;
       const highestQuotation = quotationsPrices.length > 0 ? Math.max(...quotationsPrices) : 0;
       const chosenQuotation = item.quotations.find((q) => q.isChosen || q.supplierId === item.chosenSupplierId);
-      const chosenPrice = chosenQuotation ? chosenQuotation.finalPrice : item.contractedTotal;
+      const chosenPrice = chosenQuotation ? chosenQuotation.finalPrice : totals.contractedTotal;
       const quotationEconomy = highestQuotation > 0 && chosenPrice > 0 ? Math.max(0, highestQuotation - chosenPrice) : 0;
-
-      const contractedTotal = item.quantity * item.contractedUnitPrice;
-      const balance = Math.max(0, contractedTotal - item.paidTotal);
 
       return {
         ...item,
-        contractedTotal,
-        balance,
+        contractedTotal: totals.contractedTotal,
+        purchasedTotal: totals.purchasedTotal,
+        paidTotal: totals.paidTotal,
+        balance: totals.balance,
+        status: totals.status,
         lowestQuotation,
         highestQuotation,
         quotationEconomy,
@@ -152,11 +165,28 @@ export async function PUT(request: Request) {
 
     const qty = data.quantity !== undefined ? Number(data.quantity) : prev.quantity;
     const unitPrice = data.contractedUnitPrice !== undefined ? Number(data.contractedUnitPrice) : prev.contractedUnitPrice;
-    const contractedTotal = qty * unitPrice;
-    const paidTotal = data.paidTotal !== undefined ? Number(data.paidTotal) : prev.paidTotal;
-    const balance = contractedTotal - paidTotal;
 
-    const statusToSet = data.status || (data.chosenSupplierId && unitPrice > 0 ? 'CONTRATADO' : prev.status);
+    const itemWithPurchases = await prisma.budgetItem.findUnique({
+      where: { id },
+      include: {
+        purchases: {
+          include: {
+            accountsPayable: {
+              include: { payments: true },
+            },
+          },
+        },
+      },
+    });
+
+    const computed = calculateBudgetItemTotals({
+      id,
+      quantity: qty,
+      contractedUnitPrice: unitPrice,
+      chosenSupplierId: data.chosenSupplierId !== undefined ? data.chosenSupplierId : prev.chosenSupplierId,
+      status: data.status || prev.status,
+      purchases: itemWithPurchases?.purchases || [],
+    });
 
     const updated = await prisma.budgetItem.update({
       where: { id },
@@ -164,9 +194,11 @@ export async function PUT(request: Request) {
         ...data,
         quantity: qty,
         contractedUnitPrice: unitPrice,
-        contractedTotal,
-        balance,
-        status: statusToSet,
+        contractedTotal: computed.contractedTotal,
+        purchasedTotal: computed.purchasedTotal,
+        paidTotal: computed.paidTotal,
+        balance: computed.balance,
+        status: data.status || computed.status,
       },
       include: {
         costCenter: true,
@@ -187,7 +219,7 @@ export async function PUT(request: Request) {
             supplierId: updated.chosenSupplierId,
             quantity: qty > 0 ? qty : 1,
             unitPrice: unitPrice,
-            finalPrice: contractedTotal,
+            finalPrice: updated.contractedTotal,
           },
         });
       } else {
@@ -198,7 +230,7 @@ export async function PUT(request: Request) {
             supplierId: updated.chosenSupplierId,
             quantity: qty > 0 ? qty : 1,
             unitPrice: unitPrice,
-            finalPrice: contractedTotal,
+            finalPrice: updated.contractedTotal,
             paymentTerms: 'À vista',
             deliveryDays: 0,
             isChosen: true,
