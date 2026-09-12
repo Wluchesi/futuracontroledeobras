@@ -195,7 +195,7 @@ export default function CadastrarEmpresaPage() {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                <span>Cadastrar Construtora e Acessar SaaS</span>
+                <span>Cadastrar Construtora e Acessar a Plataforma</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

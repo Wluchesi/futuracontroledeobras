@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, isSuperAdmin } from '@/context/AuthContext';
 import { useProject } from '@/context/ProjectContext';
 import {
   Database,
@@ -73,11 +73,16 @@ export default function SinapiPage() {
   const [savingItem, setSavingItem] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const isSuper = isSuperAdmin(user);
   const planName = user?.company?.planName || 'Gratuito';
-  const isPremium = planName.toLowerCase().includes('premium');
+  const isPremium = isSuper || planName.toLowerCase().includes('premium') || planName.toLowerCase().includes('teste');
 
-  // Carregar dados SINAPI
+  // Carregar dados SINAPI (apenas se for Premium)
   const fetchSinapi = async () => {
+    if (!isPremium) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -121,12 +126,12 @@ export default function SinapiPage() {
   }, []);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, selectedUf, selectedGrupo, selectedCategoria]);
-
-  useEffect(() => {
-    fetchSinapi();
-  }, [page, search, selectedUf, selectedGrupo, selectedCategoria]);
+    if (isPremium) {
+      fetchSinapi();
+    } else {
+      setLoading(false);
+    }
+  }, [page, search, selectedUf, selectedGrupo, selectedCategoria, isPremium]);
 
   // Abrir Modal de envio para Orçamento
   const handleOpenBudgetModal = (item: any) => {
@@ -274,217 +279,270 @@ export default function SinapiPage() {
         </div>
       )}
 
-      {/* Barra de Busca e Filtros */}
-      <div className="glass-card p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Busca Textual */}
-          <div className="relative col-span-1 sm:col-span-2">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Buscar por código SINAPI (ex: 00000370) ou descrição..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+      {!isPremium ? (
+        /* Vitrine de Bloqueio Exclusivo do Plano Premium */
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-3xl mx-auto space-y-6 shadow-xs">
+          <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
+            <Lock className="w-8 h-8" />
           </div>
 
-          {/* Filtro Estado (UF) */}
-          <div>
-            <select
-              value={selectedUf}
-              onChange={(e) => setSelectedUf(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {UFS.map((uf) => (
-                <option key={uf.code} value={uf.code}>
-                  📍 Estado: {uf.label}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider">
+              <Zap className="w-3.5 h-3.5 text-amber-600" />
+              <span>Recurso Exclusivo do Plano Premium</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+              Acesso Bloqueado à Tabela SINAPI
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto leading-relaxed">
+              O módulo com a base de dados oficial da Caixa Econômica Federal e IBGE, índices de custos de todos os Estados e importação direta para suas obras é disponibilizado imediatamente após a ativação e pagamento do <strong>Plano Kitneteiro Premium</strong>.
+            </p>
           </div>
 
-          {/* Filtro Categoria */}
-          <div>
-            <select
-              value={selectedCategoria}
-              onChange={(e) => setSelectedCategoria(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto py-2">
+            <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <span>Preços medianos oficiais atualizados mensalmente pela CAIXA</span>
+            </div>
+            <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <span>Índices e variações por Estado (UFs de todo o Brasil)</span>
+            </div>
+            <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <span>Importação direta para o Orçamento Executivo com 1 clique</span>
+            </div>
+            <div className="flex items-start space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <span>Gerenciamento de até 5 obras simultâneas na plataforma</span>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              href="/planos"
+              className="inline-flex items-center space-x-2 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-xl transition cursor-pointer"
             >
-              {CATEGORIAS.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
+              <span>Fazer Upgrade para o Plano Premium</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
+      ) : (
+        <>
+          {/* Barra de Busca e Filtros */}
+          <div className="glass-card p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Busca Textual */}
+              <div className="relative col-span-1 sm:col-span-2">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar por código SINAPI (ex: 00000370) ou descrição..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
 
-        {/* Filtro por Grupo Funcional (Pills Horizontal Scroll) */}
-        {grupos.length > 0 && (
-          <div className="pt-2 border-t border-slate-100 flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap flex items-center mr-1">
-              <Filter className="w-3 h-3 mr-1 text-slate-400" />
-              Grupo:
-            </span>
-            <button
-              onClick={() => setSelectedGrupo('')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                selectedGrupo === ''
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Todos ({pagination.total})
-            </button>
-            {grupos.map((grp) => (
-              <button
-                key={grp}
-                onClick={() => setSelectedGrupo(grp)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                  selectedGrupo === grp
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {grp}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+              {/* Filtro Estado (UF) */}
+              <div>
+                <select
+                  value={selectedUf}
+                  onChange={(e) => setSelectedUf(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {UFS.map((uf) => (
+                    <option key={uf.code} value={uf.code}>
+                      📍 Estado: {uf.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Tabela de Insumos SINAPI */}
-      <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-            <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
-            <p className="text-xs font-semibold">Consultando base de dados SINAPI ({selectedUf})...</p>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-            <Database className="w-12 h-12 text-slate-300 mb-2" />
-            <p className="text-sm font-bold text-slate-700">Nenhum insumo encontrado</p>
-            <p className="text-xs text-slate-500 mt-1">Tente ajustar o termo de busca ou selecione outro grupo.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-100/90 border-b border-slate-200 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Código SINAPI</th>
-                  <th className="py-3.5 px-4">Descrição do Insumo / Item</th>
-                  <th className="py-3.5 px-4 text-center">Unidade</th>
-                  <th className="py-3.5 px-4">Grupo Funcional</th>
-                  <th className="py-3.5 px-4">Categoria</th>
-                  <th className="py-3.5 px-4 text-right">Preço Mediano ({selectedUf})</th>
-                  <th className="py-3.5 px-4 text-center">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition">
-                    {/* Código */}
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                      <span className="px-2 py-1 rounded bg-slate-100 border border-slate-200 text-slate-800">
-                        {item.codigoSinapi}
-                      </span>
-                    </td>
+              {/* Filtro Categoria */}
+              <div>
+                <select
+                  value={selectedCategoria}
+                  onChange={(e) => setSelectedCategoria(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {CATEGORIAS.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-                    {/* Descrição */}
-                    <td className="py-3.5 px-4 font-medium text-slate-900 max-w-md">
-                      <div>{item.descricao}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
-                        Ref: {item.mesReferencia} • Tipo: {item.tipo}
-                      </div>
-                    </td>
-
-                    {/* Unidade */}
-                    <td className="py-3.5 px-4 text-center font-bold text-slate-600 whitespace-nowrap">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[11px]">
-                        {item.unidade}
-                      </span>
-                    </td>
-
-                    {/* Grupo */}
-                    <td className="py-3.5 px-4 font-medium text-slate-600 whitespace-nowrap">
-                      <span className="inline-flex items-center text-xs font-semibold text-slate-700">
-                        <Tag className="w-3 h-3 mr-1 text-emerald-600" />
-                        {item.grupo}
-                      </span>
-                    </td>
-
-                    {/* Categoria */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          item.categoria === 'MATERIAL'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : item.categoria === 'MAO_DE_OBRA'
-                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                            : item.categoria === 'EQUIPAMENTO'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        }`}
-                      >
-                        {item.categoria === 'MAO_DE_OBRA' ? 'Mão de Obra' : item.categoria}
-                      </span>
-                    </td>
-
-                    {/* Preço Mediano */}
-                    <td className="py-3.5 px-4 text-right font-extrabold text-slate-900 whitespace-nowrap text-sm">
-                      <span className="text-emerald-700">{formatCurrency(item.precoMediano)}</span>
-                    </td>
-
-                    {/* Ação */}
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => handleOpenBudgetModal(item)}
-                        className="inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xl shadow-xs transition cursor-pointer"
-                        title="Adicionar item ao orçamento da obra"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Usar no Orçamento</span>
-                      </button>
-                    </td>
-                  </tr>
+            {/* Filtro por Grupo Funcional (Pills Horizontal Scroll) */}
+            {grupos.length > 0 && (
+              <div className="pt-2 border-t border-slate-100 flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap flex items-center mr-1">
+                  <Filter className="w-3 h-3 mr-1 text-slate-400" />
+                  Grupo:
+                </span>
+                <button
+                  onClick={() => setSelectedGrupo('')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                    selectedGrupo === ''
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Todos ({pagination.total})
+                </button>
+                {grupos.map((grp) => (
+                  <button
+                    key={grp}
+                    onClick={() => setSelectedGrupo(grp)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                      selectedGrupo === grp
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {grp}
+                  </button>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Rodapé com Paginação */}
-        {!loading && pagination.totalPages > 1 && (
-          <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
-            <div>
-              Mostrando <strong className="text-slate-900">{items.length}</strong> de <strong className="text-slate-900">{pagination.total}</strong> insumos
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-                className="p-1.5 border rounded-lg bg-white hover:bg-slate-100 disabled:opacity-40 transition"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="font-bold">
-                Página {page} de {pagination.totalPages}
-              </span>
-              <button
-                disabled={page >= pagination.totalPages}
-                onClick={() => setPage(page + 1)}
-                className="p-1.5 border rounded-lg bg-white hover:bg-slate-100 disabled:opacity-40 transition"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+          {/* Tabela de Insumos SINAPI */}
+          <div className="glass-card rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+                <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
+                <p className="text-xs font-semibold">Consultando base de dados SINAPI ({selectedUf})...</p>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                <Database className="w-12 h-12 text-slate-300 mb-2" />
+                <p className="text-sm font-bold text-slate-700">Nenhum insumo encontrado</p>
+                <p className="text-xs text-slate-500 mt-1">Tente ajustar o termo de busca ou selecione outro grupo.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100/90 border-b border-slate-200 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Código SINAPI</th>
+                      <th className="py-3.5 px-4">Descrição do Insumo / Item</th>
+                      <th className="py-3.5 px-4 text-center">Unidade</th>
+                      <th className="py-3.5 px-4">Grupo Funcional</th>
+                      <th className="py-3.5 px-4">Categoria</th>
+                      <th className="py-3.5 px-4 text-right">Preço Mediano ({selectedUf})</th>
+                      <th className="py-3.5 px-4 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {items.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition">
+                        {/* Código */}
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                          <span className="px-2 py-1 rounded bg-slate-100 border border-slate-200 text-slate-800">
+                            {item.codigoSinapi}
+                          </span>
+                        </td>
+
+                        {/* Descrição */}
+                        <td className="py-3.5 px-4 font-medium text-slate-900 max-w-md">
+                          <div>{item.descricao}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            Ref: {item.mesReferencia} • Tipo: {item.tipo}
+                          </div>
+                        </td>
+
+                        {/* Unidade */}
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-600 whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[11px]">
+                            {item.unidade}
+                          </span>
+                        </td>
+
+                        {/* Grupo */}
+                        <td className="py-3.5 px-4 font-medium text-slate-600 whitespace-nowrap">
+                          <span className="inline-flex items-center text-xs font-semibold text-slate-700">
+                            <Tag className="w-3 h-3 mr-1 text-emerald-600" />
+                            {item.grupo}
+                          </span>
+                        </td>
+
+                        {/* Categoria */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              item.categoria === 'MATERIAL'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : item.categoria === 'MAO_DE_OBRA'
+                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                : item.categoria === 'EQUIPAMENTO'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {item.categoria === 'MAO_DE_OBRA' ? 'Mão de Obra' : item.categoria}
+                          </span>
+                        </td>
+
+                        {/* Preço Mediano */}
+                        <td className="py-3.5 px-4 text-right font-extrabold text-slate-900 whitespace-nowrap text-sm">
+                          <span className="text-emerald-700">{formatCurrency(item.precoMediano)}</span>
+                        </td>
+
+                        {/* Ação */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <button
+                            onClick={() => handleOpenBudgetModal(item)}
+                            className="inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xl shadow-xs transition cursor-pointer"
+                            title="Adicionar item ao orçamento da obra"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Usar no Orçamento</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Rodapé com Paginação */}
+            {!loading && pagination.totalPages > 1 && (
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                <div>
+                  Mostrando <strong className="text-slate-900">{items.length}</strong> de <strong className="text-slate-900">{pagination.total}</strong> insumos
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage(page - 1)}
+                    className="p-1.5 border rounded-lg bg-white hover:bg-slate-100 disabled:opacity-40 transition"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="font-bold">
+                    Página {page} de {pagination.totalPages}
+                  </span>
+                  <button
+                    disabled={page >= pagination.totalPages}
+                    onClick={() => setPage(page + 1)}
+                    className="p-1.5 border rounded-lg bg-white hover:bg-slate-100 disabled:opacity-40 transition"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Modal: Adicionar Insumo SINAPI ao Orçamento Executivo */}
-      {selectedSinapiItem && (
+      {isPremium && selectedSinapiItem && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
