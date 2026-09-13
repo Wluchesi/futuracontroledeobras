@@ -648,9 +648,17 @@ export default function ConfiguracoesPage() {
           {usersList.map((u) => (
             <div key={u.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0">
-                  {u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
+                {u.avatarUrl ? (
+                  <img
+                    src={u.avatarUrl}
+                    alt={u.name}
+                    className="w-10 h-10 rounded-full object-cover shadow-xs border-2 border-emerald-500 shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                    {u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <div className="truncate">
                   <span className="font-bold text-slate-900 text-sm block truncate">{u.name}</span>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase inline-block mt-0.5">
@@ -672,14 +680,19 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Seção Backup e Restauração do Banco de Dados — Apenas Super Admin */}
-      {isSuper && (
+      {/* Seção Backup e Restauração do Banco de Dados — Disponível exclusivamente para Planos Pro e Premium */}
+      {(isSuper || String(company?.planName || user?.company?.planName || '').toLowerCase().includes('pro') || String(company?.planName || user?.company?.planName || '').toLowerCase().includes('premium')) && (
         <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
           <div>
-            <h2 className="text-base font-bold text-slate-900 flex items-center">
-              <Database className="w-5 h-5 text-emerald-600 mr-2" />
-              Backup e Restauração Geral da Plataforma (Super Admin)
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900 flex items-center">
+                <Database className="w-5 h-5 text-emerald-600 mr-2" />
+                Backup e Restauração Geral da Plataforma
+              </h2>
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
+                {String(company?.planName || user?.company?.planName || '').toLowerCase().includes('premium') ? 'Plano Premium' : String(company?.planName || user?.company?.planName || '').toLowerCase().includes('pro') ? 'Plano Pro' : 'Super Admin'}
+              </span>
+            </div>
             <p className="text-xs text-slate-500 mt-1">
               Exporte uma cópia completa de segurança em arquivo JSON ou suba um arquivo de backup para restaurar obras, cotações, orçamentos, compras e financeiro.
             </p>
