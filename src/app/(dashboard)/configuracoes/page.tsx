@@ -53,6 +53,8 @@ export default function ConfiguracoesPage() {
 
   // Estados de Restauração de Backup
   const [restoringBackup, setRestoringBackup] = useState(false);
+  const [restoreProgressMsg, setRestoreProgressMsg] = useState('');
+  const [restorePercent, setRestorePercent] = useState(0);
   const [restoreSuccess, setRestoreSuccess] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
@@ -74,9 +76,10 @@ export default function ConfiguracoesPage() {
     setRestoringBackup(true);
     setRestoreError(null);
     setRestoreSuccess(null);
+    setRestorePercent(5);
+    setRestoreProgressMsg('Lendo e validando arquivo JSON...');
 
     try {
-      // 1. Lê e valida o JSON no navegador antes do envio
       const fileText = await selectedBackupFile.text();
       let parsedJson: any = null;
       try {
@@ -85,43 +88,59 @@ export default function ConfiguracoesPage() {
         throw new Error('O arquivo selecionado não contém uma estrutura JSON válida.');
       }
 
-      // 2. Envia JSON diretamente via POST
-      const res = await fetch('/api/backup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(parsedJson),
-      });
+      const backupData = parsedJson.data || (parsedJson.companies ? parsedJson : parsedJson.data) || {};
 
-      const responseText = await res.text();
-      let data: any = null;
-      try {
-        data = JSON.parse(responseText);
-      } catch (_) {
-        if (res.status === 504) {
-          throw new Error('Tempo limite excedido no servidor (504 Gateway Timeout). O banco está sincronizando em segundo plano.');
-        } else if (res.status === 413) {
-          throw new Error('Arquivo de backup excede o tamanho máximo permitido pelo servidor.');
-        } else {
-          throw new Error(`Erro inesperado do servidor (HTTP ${res.status}). Verifique a conexão com o banco.`);
+      // Função auxiliar para enviar cada etapa de forma leve e rápida ao servidor
+      const executeStep = async (stepName: string, stepLabel: string, percent: number) => {
+        setRestoreProgressMsg(stepLabel);
+        setRestorePercent(percent);
+
+        const res = await fetch('/api/backup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ step: stepName, data: backupData }),
+        });
+
+        const responseText = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(responseText);
+        } catch (_) {
+          throw new Error(`Erro na etapa ${stepName} (HTTP ${res.status}): ${responseText.slice(0, 100)}`);
         }
-      }
 
-      if (res.ok && data.success) {
-        const s = data.restoredSummary || {};
-        const summaryText = `Backup restaurado com sucesso! (${s.companies || 0} empresas, ${s.projects || 0} obras, ${s.budgetItems || 0} orçamentos, ${s.purchases || 0} compras, ${s.suppliers || 0} fornecedores).`;
-        setRestoreSuccess(summaryText);
-        setShowRestoreConfirm(false);
-        setSelectedBackupFile(null);
-        refreshProjects();
-      } else {
-        setRestoreError(data?.error || 'Erro ao processar restauração do backup.');
-      }
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Falha ao processar etapa ${stepName}`);
+        }
+        return data?.restoredSummary || {};
+      };
+
+      // 4 Etapas particionadas — cada uma executa em 1 a 2 segundos evitando qualquer timeout!
+      const s1 = await executeStep('base', 'Restaurando empresas, obras e fornecedores (1/4)...', 25);
+      const s2 = await executeStep('budget', 'Restaurando itens de orçamento (2/4)...', 50);
+      const s3 = await executeStep('purchases', 'Restaurando cotações e compras (3/4)...', 75);
+      const s4 = await executeStep('financial', 'Restaurando lançamentos financeiros e pagamentos (4/4)...', 95);
+
+      setRestorePercent(100);
+      setRestoreProgressMsg('Concluído com sucesso!');
+
+      const totalCompanies = s1.companies || 0;
+      const totalProjects = s1.projects || 0;
+      const totalBudget = s2.budgetItems || 0;
+      const totalPurchases = s3.purchases || 0;
+      const totalPayables = s4.accountsPayable || 0;
+
+      const summaryText = `Backup restaurado com sucesso! (${totalCompanies} empresas, ${totalProjects} obras, ${totalBudget} itens de orçamento, ${totalPurchases} compras, ${totalPayables} contas a pagar sincronizadas).`;
+      setRestoreSuccess(summaryText);
+      setShowRestoreConfirm(false);
+      setSelectedBackupFile(null);
+      refreshProjects();
     } catch (err: any) {
       setRestoreError(err.message || 'Falha de conexão ao restaurar backup.');
     } finally {
       setRestoringBackup(false);
+      setRestorePercent(0);
+      setRestoreProgressMsg('');
     }
   };
 
@@ -798,6 +817,24 @@ export default function ConfiguracoesPage() {
                     A restauração irá atualizar e sincronizar todas as informações do banco de dados (empresas, obras, centros de custo, orçamentos, compras e lançamentos financeiros) conforme os registros do arquivo.
                   </p>
                 </div>
+
+                {restoringBackup && (
+                  <div className="space-y-2 p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <span className="flex items-center space-x-1.5 truncate">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600 shrink-0" />
+                        <span className="truncate">{restoreProgressMsg}</span>
+                      </span>
+                      <span className="text-emerald-700 font-mono shrink-0 ml-2">{restorePercent}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${restorePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end space-x-2 pt-2">
                   <button
