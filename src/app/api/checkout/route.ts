@@ -82,6 +82,15 @@ export async function POST(request: Request) {
       ? `comprador_${Date.now()}@testuser.com` 
       : baseEmail;
 
+    // Origem da requisição para retornos e webhooks dinâmicos
+    const reqOrigin = request.headers.get('origin') || request.headers.get('referer');
+    let baseUrl = 'https://deobras.netlify.app';
+    if (reqOrigin && reqOrigin.startsWith('http')) {
+      try {
+        baseUrl = new URL(reqOrigin).origin;
+      } catch (_) {}
+    }
+
     // Gera preferência oficial no Mercado Pago para permitir checkout oficial
     let checkoutUrl = '';
     if (mpAccessToken) {
@@ -110,15 +119,15 @@ export async function POST(request: Request) {
               company_id: company.id,
               plan_id: planId,
             },
-            notification_url: 'https://futuracontroledeobras.vercel.app/api/webhooks/payment',
+            notification_url: `${baseUrl}/api/webhooks/payment`,
             back_urls: {
-              success: 'https://futuracontroledeobras.vercel.app/planos?status=success',
-              pending: 'https://futuracontroledeobras.vercel.app/planos?status=pending',
-              failure: 'https://futuracontroledeobras.vercel.app/planos?status=failure',
+              success: `${baseUrl}/planos?status=success`,
+              pending: `${baseUrl}/planos?status=pending`,
+              failure: `${baseUrl}/planos?status=failure`,
             },
             auto_return: 'approved',
           }),
-          signal: AbortSignal.timeout(3500),
+          signal: AbortSignal.timeout(8000),
         });
 
         if (prefRes.ok) {
@@ -222,6 +231,7 @@ export async function POST(request: Request) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
     // FLUXO CARTÃO DE CRÉDITO
     // ─────────────────────────────────────────────────────────────────────────
     if (paymentMethod === 'CREDIT_CARD') {
@@ -229,16 +239,57 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Dados do cartão de crédito são obrigatórios.' }, { status: 400 });
       }
 
-      const cleanCardNumber = cardDetails.number.replace(/\s+/g, '');
+      const cleanCardNumber = String(cardDetails.number || '').replace(/\D/g, '');
+      if (cleanCardNumber.length < 13) {
+        return NextResponse.json({ 
+          error: 'Número do cartão inválido ou incompleto. Verifique os números digitados.',
+          checkoutUrl,
+        }, { status: 400 });
+      }
+
       let isApproved = false;
       let transactionId = `tx_card_${Date.now()}`;
       let mpMessage = '';
 
-      // Tenta processar no Mercado Pago de forma transparente se as credenciais permitirem
-      if (mpAccessToken && !isTestMode) {
+      // Tenta processar no Mercado Pago de forma transparente se as credenciais existirem
+      if (mpAccessToken) {
         try {
           const mpPublicKey = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
-          const [expMonth, expYear] = (cardDetails.expiry || '12/2028').split('/');
+
+          // Parsing flexível da data de validade (aceita MM/AA, MM/AAAA, MMAA, MMAAAA, com ou sem barra)
+          const rawExpiry = String(cardDetails.expiry || '').trim();
+          let expMonth = 12;
+          let expYear = 2028;
+
+          if (rawExpiry.includes('/')) {
+            const parts = rawExpiry.split('/');
+            expMonth = parseInt(parts[0].replace(/\D/g, ''), 10) || 12;
+            let y = parseInt(parts[1].replace(/\D/g, ''), 10) || 28;
+            if (y < 100) y += 2000;
+            expYear = y;
+          } else {
+            const digits = rawExpiry.replace(/\D/g, '');
+            if (digits.length >= 4) {
+              expMonth = parseInt(digits.slice(0, 2), 10) || 12;
+              let y = parseInt(digits.slice(2), 10) || 28;
+              if (y < 100) y += 2000;
+              expYear = y;
+            }
+          }
+
+          if (expMonth < 1 || expMonth > 12) {
+            return NextResponse.json({
+              error: 'Mês de validade inválido. Informe um mês entre 01 e 12.',
+              checkoutUrl,
+            }, { status: 400 });
+          }
+
+          // Trata CPF informado no formulário com fallback nos dados da empresa
+          const cleanCpf = String(cardDetails.cpf || '').replace(/\D/g, '');
+          const companyTaxId = String(company.taxId || '').replace(/\D/g, '');
+          const cpfToUse = cleanCpf.length === 11 
+            ? cleanCpf 
+            : (companyTaxId.length === 11 ? companyTaxId : '19119119100');
 
           let detectedPaymentMethodId = 'master';
           if (cleanCardNumber.startsWith('4')) {
@@ -249,72 +300,120 @@ export async function POST(request: Request) {
             detectedPaymentMethodId = 'amex';
           } else if (/^(636368|438935|504175|5067|5090|650)/.test(cleanCardNumber)) {
             detectedPaymentMethodId = 'elo';
+          } else if (/^(606282|3841)/.test(cleanCardNumber)) {
+            detectedPaymentMethodId = 'hipercard';
           }
 
-          if (mpPublicKey) {
-            const tokenRes = await fetch(`https://api.mercadopago.com/v1/card_tokens?public_key=${mpPublicKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                card_number: cleanCardNumber,
-                security_code: cardDetails.cvv || '123',
-                expiration_month: expMonth || '12',
-                expiration_year: expYear?.length === 2 ? `20${expYear}` : expYear || '2028',
-                cardholder: {
-                  name: cardDetails.holderName,
-                  identification: { type: 'CPF', number: '19119119100' },
-                },
-              }),
-              signal: AbortSignal.timeout(3500),
-            });
+          // 1. Gera o token do cartão no Mercado Pago
+          const tokenUrl = mpPublicKey 
+            ? `https://api.mercadopago.com/v1/card_tokens?public_key=${mpPublicKey}`
+            : 'https://api.mercadopago.com/v1/card_tokens';
 
-            const tokenData = await tokenRes.json();
+          const tokenRes = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${mpAccessToken}`,
+            },
+            body: JSON.stringify({
+              card_number: cleanCardNumber,
+              security_code: String(cardDetails.cvv || '').replace(/\D/g, '') || '123',
+              expiration_month: expMonth,
+              expiration_year: expYear,
+              cardholder: {
+                name: String(cardDetails.holderName || '').trim(),
+                identification: { type: 'CPF', number: cpfToUse },
+              },
+            }),
+            signal: AbortSignal.timeout(12000),
+          });
 
-            if (tokenRes.ok && tokenData.id) {
-              const payRes = await fetch('https://api.mercadopago.com/v1/payments', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${mpAccessToken}`,
-                  'Content-Type': 'application/json',
-                  'X-Idempotency-Key': `idemp_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-                },
-                body: JSON.stringify({
-                  transaction_amount: planPrice,
-                  token: tokenData.id,
-                  description: `Assinatura ${planTitle} - Cartão Transparente`,
-                  installments: 1,
-                  payment_method_id: detectedPaymentMethodId,
-                  payer: {
-                    email: payerEmail,
-                  },
-                  metadata: {
-                    company_id: company.id,
-                    plan_id: planId,
-                  },
-                }),
-                signal: AbortSignal.timeout(3500),
-              });
+          const tokenData = await tokenRes.json().catch(() => ({}));
 
-              const payData = await payRes.json();
+          if (!tokenRes.ok || !tokenData.id) {
+            console.warn('Mercado Pago card_tokens Erro:', tokenData);
+            let friendlyTokenError = 'Não foi possível validar os dados do cartão.';
 
-            if (payRes.ok && (payData.status === 'approved' || payData.status === 'in_process')) {
-              isApproved = true;
-              transactionId = String(payData.id);
-              mpMessage = `Pagamento nº ${payData.id} processado com sucesso!`;
-            } else {
-              console.warn('Mercado Pago Cartão Erro:', payData);
-              const friendlyError = formatMercadoPagoCardError(payData.status_detail, payData.message);
-              return NextResponse.json({
-                error: friendlyError,
-                checkoutUrl,
-              }, { status: 400 });
+            if (tokenData.cause && Array.isArray(tokenData.cause) && tokenData.cause.length > 0) {
+              const code = String(tokenData.cause[0]?.code || '');
+              const desc = String(tokenData.cause[0]?.description || '');
+              if (code === 'E301' || desc.includes('card_number') || desc.includes('length')) {
+                friendlyTokenError = 'Número de cartão inválido ou incompleto. Verifique os dígitos digitados.';
+              } else if (code === 'E302' || desc.includes('security_code')) {
+                friendlyTokenError = 'Código de segurança (CVV) incorreto ou incompleto.';
+              } else if (code === '325' || code === '326' || desc.includes('expiration')) {
+                friendlyTokenError = 'Data de validade do cartão inválida ou expirada.';
+              } else if (code === '316' || desc.includes('cardholder.name')) {
+                friendlyTokenError = 'Nome do titular no cartão incorreto.';
+              } else if (code === '324' || desc.includes('identification')) {
+                friendlyTokenError = 'CPF do titular inválido. Verifique o número informado.';
+              } else if (tokenData.cause[0]?.description) {
+                friendlyTokenError = tokenData.cause[0].description;
+              }
+            } else if (tokenData.message) {
+              friendlyTokenError = tokenData.message;
             }
+
+            return NextResponse.json({
+              error: friendlyTokenError,
+              checkoutUrl,
+            }, { status: 400 });
           }
+
+          // 2. Realiza o pagamento transparente com o token gerado
+          const payRes = await fetch('https://api.mercadopago.com/v1/payments', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${mpAccessToken}`,
+              'Content-Type': 'application/json',
+              'X-Idempotency-Key': `idemp_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+            },
+            body: JSON.stringify({
+              transaction_amount: planPrice,
+              token: tokenData.id,
+              description: `Assinatura ${planTitle} - Cartão Transparente`,
+              installments: 1,
+              payment_method_id: detectedPaymentMethodId,
+              payer: {
+                email: payerEmail,
+                identification: {
+                  type: 'CPF',
+                  number: cpfToUse,
+                },
+              },
+              metadata: {
+                company_id: company.id,
+                plan_id: planId,
+              },
+            }),
+            signal: AbortSignal.timeout(12000),
+          });
+
+          const payData = await payRes.json().catch(() => ({}));
+
+          if (payRes.ok && (payData.status === 'approved' || payData.status === 'in_process')) {
+            isApproved = true;
+            transactionId = String(payData.id);
+            mpMessage = `Pagamento nº ${payData.id} processado com sucesso!`;
+          } else {
+            console.warn('Mercado Pago Cartão Erro:', payData);
+            const friendlyError = formatMercadoPagoCardError(payData.status_detail, payData.message);
+            return NextResponse.json({
+              error: friendlyError,
+              checkoutUrl,
+            }, { status: 400 });
+          }
+        } catch (cardErr: any) {
+          console.error('Erro na API de Cartão do Mercado Pago:', cardErr);
+          const isTimeout = cardErr?.name === 'TimeoutError' || cardErr?.message?.includes('timeout');
+          return NextResponse.json({
+            error: isTimeout
+              ? 'A operadora do cartão demorou para responder. Por favor, tente pelo Checkout Oficial ou pague via PIX.'
+              : 'Erro de comunicação ao processar o cartão. Utilize o Checkout Oficial do Mercado Pago para pagar com segurança.',
+            checkoutUrl,
+          }, { status: 500 });
         }
-      } catch (cardErr) {
-        console.error('Erro na API de Cartão do Mercado Pago:', cardErr);
       }
-    }
 
       // Se não aprovou de forma transparente pelo gateway, NÃO libera o plano
       if (!isApproved) {

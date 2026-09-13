@@ -12,6 +12,35 @@ interface CheckoutModalProps {
   planPrice: number;
 }
 
+const formatCardNumber = (val: string) => {
+  const digits = val.replace(/\D/g, '').slice(0, 16);
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+};
+
+const formatExpiry = (val: string) => {
+  const digits = val.replace(/\D/g, '').slice(0, 4);
+  if (digits.length >= 3) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+  return digits;
+};
+
+const formatCpf = (val: string) => {
+  const digits = val.replace(/\D/g, '').slice(0, 11);
+  if (digits.length > 9) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  } else if (digits.length > 6) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  } else if (digits.length > 3) {
+    return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  }
+  return digits;
+};
+
+const formatCvv = (val: string) => {
+  return val.replace(/\D/g, '').slice(0, 4);
+};
+
 export default function CheckoutModal({ isOpen, onClose, planId, planTitle, planPrice }: CheckoutModalProps) {
   const { user, updateCompanySession } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'PIX' | 'CREDIT_CARD'>('PIX');
@@ -27,6 +56,7 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
   const [cardForm, setCardForm] = useState({
     number: '',
     holderName: '',
+    cpf: '',
     expiry: '',
     cvv: '',
   });
@@ -389,21 +419,36 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
                     required
                     placeholder="4532 •••• •••• 8892"
                     value={cardForm.number}
-                    onChange={(e) => setCardForm({ ...cardForm, number: e.target.value })}
+                    maxLength={19}
+                    onChange={(e) => setCardForm({ ...cardForm, number: formatCardNumber(e.target.value) })}
                     className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 focus:outline-hidden font-mono"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Nome no Cartão *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="EX: CARLOS A SILVA"
-                    value={cardForm.holderName}
-                    onChange={(e) => setCardForm({ ...cardForm, holderName: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 focus:outline-hidden uppercase"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Nome no Cartão *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="EX: GUILHERME LUCHESI"
+                      value={cardForm.holderName}
+                      onChange={(e) => setCardForm({ ...cardForm, holderName: e.target.value.toUpperCase() })}
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 focus:outline-hidden uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">CPF do Titular *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="000.000.000-00"
+                      value={cardForm.cpf}
+                      maxLength={14}
+                      onChange={(e) => setCardForm({ ...cardForm, cpf: formatCpf(e.target.value) })}
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 focus:outline-hidden font-mono"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -412,9 +457,10 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
                     <input
                       type="text"
                       required
-                      placeholder="12/28"
+                      placeholder="MM/AA"
                       value={cardForm.expiry}
-                      onChange={(e) => setCardForm({ ...cardForm, expiry: e.target.value })}
+                      maxLength={5}
+                      onChange={(e) => setCardForm({ ...cardForm, expiry: formatExpiry(e.target.value) })}
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 focus:outline-hidden font-mono"
                     />
                   </div>
@@ -427,7 +473,7 @@ export default function CheckoutModal({ isOpen, onClose, planId, planTitle, plan
                       placeholder="123"
                       maxLength={4}
                       value={cardForm.cvv}
-                      onChange={(e) => setCardForm({ ...cardForm, cvv: e.target.value })}
+                      onChange={(e) => setCardForm({ ...cardForm, cvv: formatCvv(e.target.value) })}
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 focus:outline-hidden font-mono"
                     />
                   </div>
