@@ -94,6 +94,22 @@ export async function GET() {
   }
 }
 
+// Helper para processar array de itens em sub-lotes paralelos seguros
+async function processBatch<T>(items: T[], batchSize: number, fn: (item: T) => Promise<void>) {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const slice = items.slice(i, i + batchSize);
+    await Promise.all(
+      slice.map(async (item) => {
+        try {
+          await fn(item);
+        } catch (err) {
+          console.warn('[Backup Batch Item Warning]', err);
+        }
+      })
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     let payload: any = null;
@@ -119,32 +135,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Dados de backup vazios ou formato inválido.' }, { status: 400 });
     }
 
-    // Suporte a restauração particionada por etapas (step) para evitar 504 Gateway Timeout em serverless
-    const step = payload.step || 'all';
-    const backupData = payload.data || (payload.companies ? payload : payload.data) || {};
-
-    const summary: Record<string, number> = {
-      companies: 0,
-      costCenters: 0,
-      users: 0,
-      suppliers: 0,
-      bankAccounts: 0,
-      projects: 0,
-      budgetItems: 0,
-      quotations: 0,
-      purchases: 0,
-      accountsPayable: 0,
-      payments: 0,
-      attachments: 0,
-    };
-
     // ─────────────────────────────────────────────────────────────────────────
-    // ETAPA 1: BASE (Empresas, Centros de Custo, Usuários, Fornecedores, Bancos, Obras)
+    // NOVO MODO: RESTAURAÇÃO GRANULAR POR ENTIDADE (Alta velocidade, zero timeouts)
     // ─────────────────────────────────────────────────────────────────────────
-    if (step === 'all' || step === 'base') {
-      if (Array.isArray(backupData.companies)) {
-        for (const comp of backupData.companies) {
-          if (!comp.id) continue;
+    if (payload.entity && Array.isArray(payload.records)) {
+      const { entity, records } = payload;
+      let count = 0;
+
+      if (entity === 'companies') {
+        await processBatch(records, 5, async (comp: any) => {
+          if (!comp.id) return;
           await prisma.company.upsert({
             where: { id: comp.id },
             create: {
@@ -166,13 +166,11 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.companies++;
-        }
-      }
-
-      if (Array.isArray(backupData.costCenters)) {
-        for (const cc of backupData.costCenters) {
-          if (!cc.code) continue;
+          count++;
+        });
+      } else if (entity === 'costCenters') {
+        await processBatch(records, 5, async (cc: any) => {
+          if (!cc.code) return;
           await prisma.costCenter.upsert({
             where: { code: cc.code },
             create: {
@@ -193,17 +191,14 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.costCenters++;
-        }
-      }
+          count++;
+        });
+      } else if (entity === 'users') {
+        const companies = await prisma.company.findMany({ select: { id: true } });
+        const compIds = new Set(companies.map((c) => c.id));
 
-      // Pré-carrega IDs de empresas para validar usuários e obras
-      const companies = await prisma.company.findMany({ select: { id: true } });
-      const compIds = new Set(companies.map((c) => c.id));
-
-      if (Array.isArray(backupData.users)) {
-        for (const u of backupData.users) {
-          if (!u.id || !u.email || !compIds.has(u.companyId)) continue;
+        await processBatch(records, 5, async (u: any) => {
+          if (!u.id || !u.email || !compIds.has(u.companyId)) return;
           await prisma.user.upsert({
             where: { email: u.email },
             create: {
@@ -225,13 +220,14 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.users++;
-        }
-      }
+          count++;
+        });
+      } else if (entity === 'suppliers') {
+        const companies = await prisma.company.findMany({ select: { id: true } });
+        const compIds = new Set(companies.map((c) => c.id));
 
-      if (Array.isArray(backupData.suppliers)) {
-        for (const s of backupData.suppliers) {
-          if (!s.id || !compIds.has(s.companyId)) continue;
+        await processBatch(records, 5, async (s: any) => {
+          if (!s.id || !compIds.has(s.companyId)) return;
           await prisma.supplier.upsert({
             where: { id: s.id },
             create: {
@@ -268,13 +264,14 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.suppliers++;
-        }
-      }
+          count++;
+        });
+      } else if (entity === 'bankAccounts') {
+        const companies = await prisma.company.findMany({ select: { id: true } });
+        const compIds = new Set(companies.map((c) => c.id));
 
-      if (Array.isArray(backupData.bankAccounts)) {
-        for (const b of backupData.bankAccounts) {
-          if (!b.id || !compIds.has(b.companyId)) continue;
+        await processBatch(records, 5, async (b: any) => {
+          if (!b.id || !compIds.has(b.companyId)) return;
           await prisma.bankAccount.upsert({
             where: { id: b.id },
             create: {
@@ -297,13 +294,14 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.bankAccounts++;
-        }
-      }
+          count++;
+        });
+      } else if (entity === 'projects') {
+        const companies = await prisma.company.findMany({ select: { id: true } });
+        const compIds = new Set(companies.map((c) => c.id));
 
-      if (Array.isArray(backupData.projects)) {
-        for (const p of backupData.projects) {
-          if (!p.id || !compIds.has(p.companyId)) continue;
+        await processBatch(records, 5, async (p: any) => {
+          if (!p.id || !compIds.has(p.companyId)) return;
           await prisma.project.upsert({
             where: { id: p.id },
             create: {
@@ -342,31 +340,23 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.projects++;
-        }
-      }
-    }
+          count++;
+        });
+      } else if (entity === 'budgetItems') {
+        const [projects, costCenters, suppliers] = await Promise.all([
+          prisma.project.findMany({ select: { id: true } }),
+          prisma.costCenter.findMany({ select: { id: true } }),
+          prisma.supplier.findMany({ select: { id: true } }),
+        ]);
+        const projectIds = new Set(projects.map((p) => p.id));
+        const costCenterIds = new Set(costCenters.map((c) => c.id));
+        const supplierIds = new Set(suppliers.map((s) => s.id));
+        const fallbackCostCenterId = costCenters[0]?.id;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ETAPA 2: ORÇAMENTOS (Itens de Orçamento)
-    // ─────────────────────────────────────────────────────────────────────────
-    if (step === 'all' || step === 'budget') {
-      const [projects, costCenters, suppliers] = await Promise.all([
-        prisma.project.findMany({ select: { id: true } }),
-        prisma.costCenter.findMany({ select: { id: true } }),
-        prisma.supplier.findMany({ select: { id: true } }),
-      ]);
-
-      const projectIds = new Set(projects.map((p) => p.id));
-      const costCenterIds = new Set(costCenters.map((c) => c.id));
-      const supplierIds = new Set(suppliers.map((s) => s.id));
-      const fallbackCostCenterId = costCenters[0]?.id;
-
-      if (Array.isArray(backupData.budgetItems)) {
-        for (const item of backupData.budgetItems) {
-          if (!item.id || !projectIds.has(item.projectId)) continue;
+        await processBatch(records, 5, async (item: any) => {
+          if (!item.id || !projectIds.has(item.projectId)) return;
           const targetCostCenterId = costCenterIds.has(item.costCenterId) ? item.costCenterId : fallbackCostCenterId;
-          if (!targetCostCenterId) continue;
+          if (!targetCostCenterId) return;
 
           const chosenSupplierId = item.chosenSupplierId && supplierIds.has(item.chosenSupplierId)
             ? item.chosenSupplierId
@@ -413,31 +403,20 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.budgetItems++;
-        }
-      }
-    }
+          count++;
+        });
+      } else if (entity === 'quotations') {
+        const [projects, budgetItems, suppliers] = await Promise.all([
+          prisma.project.findMany({ select: { id: true } }),
+          prisma.budgetItem.findMany({ select: { id: true } }),
+          prisma.supplier.findMany({ select: { id: true } }),
+        ]);
+        const projectIds = new Set(projects.map((p) => p.id));
+        const budgetItemIds = new Set(budgetItems.map((b) => b.id));
+        const supplierIds = new Set(suppliers.map((s) => s.id));
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ETAPA 3: COMPRAS E COTAÇÕES
-    // ─────────────────────────────────────────────────────────────────────────
-    if (step === 'all' || step === 'purchases') {
-      const [projects, costCenters, budgetItems, suppliers] = await Promise.all([
-        prisma.project.findMany({ select: { id: true } }),
-        prisma.costCenter.findMany({ select: { id: true } }),
-        prisma.budgetItem.findMany({ select: { id: true } }),
-        prisma.supplier.findMany({ select: { id: true } }),
-      ]);
-
-      const projectIds = new Set(projects.map((p) => p.id));
-      const costCenterIds = new Set(costCenters.map((c) => c.id));
-      const budgetItemIds = new Set(budgetItems.map((b) => b.id));
-      const supplierIds = new Set(suppliers.map((s) => s.id));
-      const fallbackCostCenterId = costCenters[0]?.id;
-
-      if (Array.isArray(backupData.quotations)) {
-        for (const q of backupData.quotations) {
-          if (!q.id || !budgetItemIds.has(q.budgetItemId) || !projectIds.has(q.projectId) || !supplierIds.has(q.supplierId)) continue;
+        await processBatch(records, 5, async (q: any) => {
+          if (!q.id || !budgetItemIds.has(q.budgetItemId) || !projectIds.has(q.projectId) || !supplierIds.has(q.supplierId)) return;
           await prisma.quotation.upsert({
             where: { id: q.id },
             create: {
@@ -476,15 +455,25 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.quotations++;
-        }
-      }
+          count++;
+        });
+      } else if (entity === 'purchases') {
+        const [projects, costCenters, budgetItems, suppliers] = await Promise.all([
+          prisma.project.findMany({ select: { id: true } }),
+          prisma.costCenter.findMany({ select: { id: true } }),
+          prisma.budgetItem.findMany({ select: { id: true } }),
+          prisma.supplier.findMany({ select: { id: true } }),
+        ]);
+        const projectIds = new Set(projects.map((p) => p.id));
+        const costCenterIds = new Set(costCenters.map((c) => c.id));
+        const budgetItemIds = new Set(budgetItems.map((b) => b.id));
+        const supplierIds = new Set(suppliers.map((s) => s.id));
+        const fallbackCostCenterId = costCenters[0]?.id;
 
-      if (Array.isArray(backupData.purchases)) {
-        for (const pur of backupData.purchases) {
-          if (!pur.id || !projectIds.has(pur.projectId) || !budgetItemIds.has(pur.budgetItemId) || !supplierIds.has(pur.supplierId)) continue;
+        await processBatch(records, 5, async (pur: any) => {
+          if (!pur.id || !projectIds.has(pur.projectId) || !budgetItemIds.has(pur.budgetItemId) || !supplierIds.has(pur.supplierId)) return;
           const targetCostCenterId = costCenterIds.has(pur.costCenterId) ? pur.costCenterId : fallbackCostCenterId;
-          if (!targetCostCenterId) continue;
+          if (!targetCostCenterId) return;
 
           await prisma.purchase.upsert({
             where: { id: pur.id },
@@ -527,35 +516,27 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.purchases++;
-        }
-      }
-    }
+          count++;
+        });
+      } else if (entity === 'accountsPayable') {
+        const [projects, costCenters, suppliers, purchases, bankAccounts] = await Promise.all([
+          prisma.project.findMany({ select: { id: true } }),
+          prisma.costCenter.findMany({ select: { id: true } }),
+          prisma.supplier.findMany({ select: { id: true } }),
+          prisma.purchase.findMany({ select: { id: true } }),
+          prisma.bankAccount.findMany({ select: { id: true } }),
+        ]);
+        const projectIds = new Set(projects.map((p) => p.id));
+        const costCenterIds = new Set(costCenters.map((c) => c.id));
+        const supplierIds = new Set(suppliers.map((s) => s.id));
+        const purchaseIds = new Set(purchases.map((pur) => pur.id));
+        const bankAccountIds = new Set(bankAccounts.map((b) => b.id));
+        const fallbackCostCenterId = costCenters[0]?.id;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ETAPA 4: FINANCEIRO (Contas a Pagar, Pagamentos e Anexos)
-    // ─────────────────────────────────────────────────────────────────────────
-    if (step === 'all' || step === 'financial') {
-      const [projects, costCenters, suppliers, purchases, bankAccounts] = await Promise.all([
-        prisma.project.findMany({ select: { id: true } }),
-        prisma.costCenter.findMany({ select: { id: true } }),
-        prisma.supplier.findMany({ select: { id: true } }),
-        prisma.purchase.findMany({ select: { id: true } }),
-        prisma.bankAccount.findMany({ select: { id: true } }),
-      ]);
-
-      const projectIds = new Set(projects.map((p) => p.id));
-      const costCenterIds = new Set(costCenters.map((c) => c.id));
-      const supplierIds = new Set(suppliers.map((s) => s.id));
-      const purchaseIds = new Set(purchases.map((pur) => pur.id));
-      const bankAccountIds = new Set(bankAccounts.map((b) => b.id));
-      const fallbackCostCenterId = costCenters[0]?.id;
-
-      if (Array.isArray(backupData.accountsPayable)) {
-        for (const ap of backupData.accountsPayable) {
-          if (!ap.id || !projectIds.has(ap.projectId) || !supplierIds.has(ap.supplierId)) continue;
+        await processBatch(records, 5, async (ap: any) => {
+          if (!ap.id || !projectIds.has(ap.projectId) || !supplierIds.has(ap.supplierId)) return;
           const targetCostCenterId = costCenterIds.has(ap.costCenterId) ? ap.costCenterId : fallbackCostCenterId;
-          if (!targetCostCenterId) continue;
+          if (!targetCostCenterId) return;
 
           const purchaseId = ap.purchaseId && purchaseIds.has(ap.purchaseId) ? ap.purchaseId : null;
           const bankAccountId = ap.bankAccountId && bankAccountIds.has(ap.bankAccountId) ? ap.bankAccountId : null;
@@ -595,17 +576,14 @@ export async function POST(request: Request) {
               updatedAt: new Date(),
             },
           });
-          summary.accountsPayable++;
-        }
-      }
+          count++;
+        });
+      } else if (entity === 'payments') {
+        const apList = await prisma.accountPayable.findMany({ select: { id: true } });
+        const apIds = new Set(apList.map((a) => a.id));
 
-      // Pré-carrega IDs de contas a pagar para pagamentos
-      const apList = await prisma.accountPayable.findMany({ select: { id: true } });
-      const apIds = new Set(apList.map((a) => a.id));
-
-      if (Array.isArray(backupData.payments)) {
-        for (const pay of backupData.payments) {
-          if (!pay.id || !apIds.has(pay.accountPayableId)) continue;
+        await processBatch(records, 5, async (pay: any) => {
+          if (!pay.id || !apIds.has(pay.accountPayableId)) return;
           await prisma.payment.upsert({
             where: { id: pay.id },
             create: {
@@ -626,13 +604,11 @@ export async function POST(request: Request) {
               notes: pay.notes || null,
             },
           });
-          summary.payments++;
-        }
-      }
-
-      if (Array.isArray(backupData.attachments)) {
-        for (const att of backupData.attachments) {
-          if (!att.id) continue;
+          count++;
+        });
+      } else if (entity === 'attachments') {
+        await processBatch(records, 5, async (att: any) => {
+          if (!att.id) return;
           await prisma.attachment.upsert({
             where: { id: att.id },
             create: {
@@ -652,15 +628,67 @@ export async function POST(request: Request) {
               mimeType: att.mimeType || 'application/octet-stream',
             },
           });
-          summary.attachments++;
-        }
+          count++;
+        });
       }
+
+      return NextResponse.json({
+        success: true,
+        entity,
+        count,
+      });
+    }
+
+    // Fallback legado por etapas
+    const step = payload.step || 'all';
+    const backupData = payload.data || (payload.companies ? payload : payload.data) || {};
+
+    const summary: Record<string, number> = {
+      companies: 0,
+      costCenters: 0,
+      users: 0,
+      suppliers: 0,
+      bankAccounts: 0,
+      projects: 0,
+      budgetItems: 0,
+      quotations: 0,
+      purchases: 0,
+      accountsPayable: 0,
+      payments: 0,
+      attachments: 0,
+    };
+
+    if ((step === 'all' || step === 'base') && Array.isArray(backupData.companies)) {
+      await processBatch(backupData.companies, 5, async (comp: any) => {
+        if (!comp.id) return;
+        await prisma.company.upsert({
+          where: { id: comp.id },
+          create: {
+            id: comp.id,
+            name: comp.name || 'Empresa',
+            taxId: comp.taxId || null,
+            planName: comp.planName || 'Plano Gratuito (1 Obra / 4 Kitnets)',
+            maxProjects: Number(comp.maxProjects) || 1,
+            maxUsers: Number(comp.maxUsers) || 2,
+            createdAt: comp.createdAt ? new Date(comp.createdAt) : new Date(),
+            updatedAt: comp.updatedAt ? new Date(comp.updatedAt) : new Date(),
+          },
+          update: {
+            name: comp.name || 'Empresa',
+            taxId: comp.taxId || null,
+            planName: comp.planName || undefined,
+            maxProjects: Number(comp.maxProjects) || undefined,
+            maxUsers: Number(comp.maxUsers) || undefined,
+            updatedAt: new Date(),
+          },
+        });
+        summary.companies++;
+      });
     }
 
     return NextResponse.json({
       success: true,
       step,
-      message: `Etapa ${step} processada com sucesso!`,
       restoredSummary: summary,
     });
   } catch (error: any) {

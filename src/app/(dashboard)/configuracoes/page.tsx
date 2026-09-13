@@ -90,47 +90,87 @@ export default function ConfiguracoesPage() {
 
       const backupData = parsedJson.data || (parsedJson.companies ? parsedJson : parsedJson.data) || {};
 
-      // Função auxiliar para enviar cada etapa de forma leve e rápida ao servidor
-      const executeStep = async (stepName: string, stepLabel: string, percent: number) => {
-        setRestoreProgressMsg(stepLabel);
+      interface BatchTask {
+        entity: string;
+        label: string;
+        records: any[];
+      }
+
+      const tasks: BatchTask[] = [];
+
+      const addEntityTasks = (entityKey: string, label: string, sliceSize: number = 20) => {
+        const list = Array.isArray(backupData[entityKey]) ? backupData[entityKey] : [];
+        if (list.length === 0) return;
+
+        if (list.length <= sliceSize) {
+          tasks.push({ entity: entityKey, label: `${label} (${list.length} registros)`, records: list });
+        } else {
+          for (let i = 0; i < list.length; i += sliceSize) {
+            const end = Math.min(i + sliceSize, list.length);
+            const sub = list.slice(i, end);
+            tasks.push({
+              entity: entityKey,
+              label: `${label} (lote ${Math.floor(i / sliceSize) + 1} - ${i + 1} a ${end} de ${list.length})`,
+              records: sub,
+            });
+          }
+        }
+      };
+
+      // Fila ordenada respeitando relacionamentos e integridade referencial:
+      addEntityTasks('companies', 'Empresas', 10);
+      addEntityTasks('costCenters', 'Centros de Custo', 20);
+      addEntityTasks('users', 'Usuários', 15);
+      addEntityTasks('suppliers', 'Fornecedores', 20);
+      addEntityTasks('bankAccounts', 'Contas Bancárias', 15);
+      addEntityTasks('projects', 'Obras', 10);
+      addEntityTasks('budgetItems', 'Itens de Orçamento', 20);
+      addEntityTasks('quotations', 'Cotações', 20);
+      addEntityTasks('purchases', 'Compras', 20);
+      addEntityTasks('accountsPayable', 'Contas a Pagar', 20);
+      addEntityTasks('payments', 'Pagamentos', 20);
+      addEntityTasks('attachments', 'Anexos', 20);
+
+      if (tasks.length === 0) {
+        throw new Error('O arquivo de backup não contém nenhum registro para restauração.');
+      }
+
+      const counts: Record<string, number> = {};
+
+      for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
+        const percent = Math.round(10 + ((i + 1) / tasks.length) * 85);
+        setRestoreProgressMsg(`Restaurando ${task.label}...`);
         setRestorePercent(percent);
 
         const res = await fetch('/api/backup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ step: stepName, data: backupData }),
+          body: JSON.stringify({ entity: task.entity, records: task.records }),
         });
 
         const responseText = await res.text();
-        let data: any = null;
+        let result: any = null;
         try {
-          data = JSON.parse(responseText);
+          result = JSON.parse(responseText);
         } catch (_) {
-          throw new Error(`Erro na etapa ${stepName} (HTTP ${res.status}): ${responseText.slice(0, 100)}`);
+          if (res.status === 504) {
+            throw new Error(`Tempo limite na etapa ${task.label}. O banco ainda está processando.`);
+          }
+          throw new Error(`Erro na etapa ${task.label} (HTTP ${res.status}): ${responseText.slice(0, 100)}`);
         }
 
-        if (!res.ok || !data?.success) {
-          throw new Error(data?.error || `Falha ao processar etapa ${stepName}`);
+        if (!res.ok || !result?.success) {
+          throw new Error(result?.error || `Falha ao processar ${task.label}`);
         }
-        return data?.restoredSummary || {};
-      };
 
-      // 4 Etapas particionadas — cada uma executa em 1 a 2 segundos evitando qualquer timeout!
-      const s1 = await executeStep('base', 'Restaurando empresas, obras e fornecedores (1/4)...', 25);
-      const s2 = await executeStep('budget', 'Restaurando itens de orçamento (2/4)...', 50);
-      const s3 = await executeStep('purchases', 'Restaurando cotações e compras (3/4)...', 75);
-      const s4 = await executeStep('financial', 'Restaurando lançamentos financeiros e pagamentos (4/4)...', 95);
+        counts[task.entity] = (counts[task.entity] || 0) + (result.count || 0);
+      }
 
       setRestorePercent(100);
       setRestoreProgressMsg('Concluído com sucesso!');
 
-      const totalCompanies = s1.companies || 0;
-      const totalProjects = s1.projects || 0;
-      const totalBudget = s2.budgetItems || 0;
-      const totalPurchases = s3.purchases || 0;
-      const totalPayables = s4.accountsPayable || 0;
-
-      const summaryText = `Backup restaurado com sucesso! (${totalCompanies} empresas, ${totalProjects} obras, ${totalBudget} itens de orçamento, ${totalPurchases} compras, ${totalPayables} contas a pagar sincronizadas).`;
+      const summaryText = `Backup restaurado com sucesso! (${counts.companies || 0} empresas, ${counts.projects || 0} obras, ${counts.budgetItems || 0} itens de orçamento, ${counts.purchases || 0} compras, ${counts.accountsPayable || 0} contas a pagar sincronizadas).`;
       setRestoreSuccess(summaryText);
       setShowRestoreConfirm(false);
       setSelectedBackupFile(null);
