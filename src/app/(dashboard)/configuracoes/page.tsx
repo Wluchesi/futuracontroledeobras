@@ -76,15 +76,38 @@ export default function ConfiguracoesPage() {
     setRestoreSuccess(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedBackupFile);
+      // 1. Lê e valida o JSON no navegador antes do envio
+      const fileText = await selectedBackupFile.text();
+      let parsedJson: any = null;
+      try {
+        parsedJson = JSON.parse(fileText);
+      } catch (jsonErr) {
+        throw new Error('O arquivo selecionado não contém uma estrutura JSON válida.');
+      }
 
+      // 2. Envia JSON diretamente via POST
       const res = await fetch('/api/backup', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(parsedJson),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch (_) {
+        if (res.status === 504) {
+          throw new Error('Tempo limite excedido no servidor (504 Gateway Timeout). O banco está sincronizando em segundo plano.');
+        } else if (res.status === 413) {
+          throw new Error('Arquivo de backup excede o tamanho máximo permitido pelo servidor.');
+        } else {
+          throw new Error(`Erro inesperado do servidor (HTTP ${res.status}). Verifique a conexão com o banco.`);
+        }
+      }
+
       if (res.ok && data.success) {
         const s = data.restoredSummary || {};
         const summaryText = `Backup restaurado com sucesso! (${s.companies || 0} empresas, ${s.projects || 0} obras, ${s.budgetItems || 0} orçamentos, ${s.purchases || 0} compras, ${s.suppliers || 0} fornecedores).`;
@@ -93,7 +116,7 @@ export default function ConfiguracoesPage() {
         setSelectedBackupFile(null);
         refreshProjects();
       } else {
-        setRestoreError(data.error || 'Erro ao processar restauração do backup.');
+        setRestoreError(data?.error || 'Erro ao processar restauração do backup.');
       }
     } catch (err: any) {
       setRestoreError(err.message || 'Falha de conexão ao restaurar backup.');

@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+async function runInChunks<T>(items: T[], chunkSize: number, fn: (item: T) => Promise<void>) {
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    await Promise.all(chunk.map(fn));
+  }
+}
+
 export async function GET() {
   try {
-    // Consultas sequenciais para respeitar o limite de conexões do pool PostgreSQL (pgbouncer)
+    // Consultas sequenciais para respeitar o pool de conexões
     const companies = await prisma.company.findMany();
     const users = await prisma.user.findMany({
       select: {
@@ -117,7 +127,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Dados de backup vazios ou formato inválido.' }, { status: 400 });
     }
 
-    // Aceita tanto o formato completo com chave `data` quanto objeto direto
     const backupData = payload.data || payload;
 
     const restoredSummary: Record<string, number> = {
@@ -135,10 +144,41 @@ export async function POST(request: Request) {
       attachments: 0,
     };
 
+    // Pre-carrega IDs existentes em lote de forma paralela (evita N+1 queries que geravam timeout)
+    const [
+      dbCompanies,
+      dbCostCenters,
+      dbSuppliers,
+      dbBankAccounts,
+      dbProjects,
+      dbBudgetItems,
+      dbPurchases,
+      dbAccountsPayable,
+    ] = await Promise.all([
+      prisma.company.findMany({ select: { id: true } }),
+      prisma.costCenter.findMany({ select: { id: true, code: true } }),
+      prisma.supplier.findMany({ select: { id: true } }),
+      prisma.bankAccount.findMany({ select: { id: true } }),
+      prisma.project.findMany({ select: { id: true } }),
+      prisma.budgetItem.findMany({ select: { id: true } }),
+      prisma.purchase.findMany({ select: { id: true } }),
+      prisma.accountPayable.findMany({ select: { id: true } }),
+    ]);
+
+    const companyIdSet = new Set(dbCompanies.map((c) => c.id));
+    const costCenterIdSet = new Set(dbCostCenters.map((c) => c.id));
+    const supplierIdSet = new Set(dbSuppliers.map((s) => s.id));
+    const bankAccountIdSet = new Set(dbBankAccounts.map((b) => b.id));
+    const projectIdSet = new Set(dbProjects.map((p) => p.id));
+    const budgetItemIdSet = new Set(dbBudgetItems.map((b) => b.id));
+    const purchaseIdSet = new Set(dbPurchases.map((pur) => pur.id));
+    const accountPayableIdSet = new Set(dbAccountsPayable.map((ap) => ap.id));
+    const defaultCostCenterId = dbCostCenters[0]?.id;
+
     // 1. Empresas (Companies)
     if (Array.isArray(backupData.companies)) {
-      for (const comp of backupData.companies) {
-        if (!comp.id) continue;
+      await runInChunks(backupData.companies, 5, async (comp: any) => {
+        if (!comp.id) return;
         await prisma.company.upsert({
           where: { id: comp.id },
           create: {
@@ -160,15 +200,16 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        companyIdSet.add(comp.id);
         restoredSummary.companies++;
-      }
+      });
     }
 
     // 2. Centros de Custo (CostCenters)
     if (Array.isArray(backupData.costCenters)) {
-      for (const cc of backupData.costCenters) {
-        if (!cc.code) continue;
-        await prisma.costCenter.upsert({
+      await runInChunks(backupData.costCenters, 5, async (cc: any) => {
+        if (!cc.code) return;
+        const upserted = await prisma.costCenter.upsert({
           where: { code: cc.code },
           create: {
             id: cc.id || undefined,
@@ -188,17 +229,15 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        costCenterIdSet.add(upserted.id);
         restoredSummary.costCenters++;
-      }
+      });
     }
 
     // 3. Usuários (Users)
     if (Array.isArray(backupData.users)) {
-      for (const u of backupData.users) {
-        if (!u.id || !u.email) continue;
-        const companyExists = await prisma.company.findUnique({ where: { id: u.companyId } });
-        if (!companyExists) continue;
-
+      await runInChunks(backupData.users, 5, async (u: any) => {
+        if (!u.id || !u.email || !companyIdSet.has(u.companyId)) return;
         await prisma.user.upsert({
           where: { email: u.email },
           create: {
@@ -221,16 +260,13 @@ export async function POST(request: Request) {
           },
         });
         restoredSummary.users++;
-      }
+      });
     }
 
     // 4. Fornecedores (Suppliers)
     if (Array.isArray(backupData.suppliers)) {
-      for (const s of backupData.suppliers) {
-        if (!s.id) continue;
-        const companyExists = await prisma.company.findUnique({ where: { id: s.companyId } });
-        if (!companyExists) continue;
-
+      await runInChunks(backupData.suppliers, 5, async (s: any) => {
+        if (!s.id || !companyIdSet.has(s.companyId)) return;
         await prisma.supplier.upsert({
           where: { id: s.id },
           create: {
@@ -267,17 +303,15 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        supplierIdSet.add(s.id);
         restoredSummary.suppliers++;
-      }
+      });
     }
 
     // 5. Contas Bancárias (BankAccounts)
     if (Array.isArray(backupData.bankAccounts)) {
-      for (const b of backupData.bankAccounts) {
-        if (!b.id) continue;
-        const companyExists = await prisma.company.findUnique({ where: { id: b.companyId } });
-        if (!companyExists) continue;
-
+      await runInChunks(backupData.bankAccounts, 5, async (b: any) => {
+        if (!b.id || !companyIdSet.has(b.companyId)) return;
         await prisma.bankAccount.upsert({
           where: { id: b.id },
           create: {
@@ -300,17 +334,15 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        bankAccountIdSet.add(b.id);
         restoredSummary.bankAccounts++;
-      }
+      });
     }
 
     // 6. Obras (Projects)
     if (Array.isArray(backupData.projects)) {
-      for (const p of backupData.projects) {
-        if (!p.id) continue;
-        const companyExists = await prisma.company.findUnique({ where: { id: p.companyId } });
-        if (!companyExists) continue;
-
+      await runInChunks(backupData.projects, 5, async (p: any) => {
+        if (!p.id || !companyIdSet.has(p.companyId)) return;
         await prisma.project.upsert({
           where: { id: p.id },
           create: {
@@ -349,38 +381,35 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        projectIdSet.add(p.id);
         restoredSummary.projects++;
-      }
+      });
     }
 
     // 7. Itens de Orçamento (BudgetItems)
     if (Array.isArray(backupData.budgetItems)) {
-      for (const item of backupData.budgetItems) {
-        if (!item.id) continue;
-        const projectExists = await prisma.project.findUnique({ where: { id: item.projectId } });
-        if (!projectExists) continue;
+      await runInChunks(backupData.budgetItems, 5, async (item: any) => {
+        if (!item.id || !projectIdSet.has(item.projectId)) return;
+        const targetCostCenterId = costCenterIdSet.has(item.costCenterId) ? item.costCenterId : defaultCostCenterId;
+        if (!targetCostCenterId) return;
 
-        let costCenterId = item.costCenterId;
-        const ccExists = await prisma.costCenter.findUnique({ where: { id: costCenterId } });
-        if (!ccExists) {
-          const firstCc = await prisma.costCenter.findFirst();
-          if (firstCc) costCenterId = firstCc.id;
-          else continue;
-        }
+        const chosenSupplierId = item.chosenSupplierId && supplierIdSet.has(item.chosenSupplierId) 
+          ? item.chosenSupplierId 
+          : null;
 
         await prisma.budgetItem.upsert({
           where: { id: item.id },
           create: {
             id: item.id,
             projectId: item.projectId,
-            costCenterId,
+            costCenterId: targetCostCenterId,
             code: item.code || 'ORC-0000',
             stage: item.stage || 'Geral',
             itemName: item.itemName || 'Item',
             description: item.description || null,
             unit: item.unit || 'un',
             quantity: Number(item.quantity) || 0,
-            chosenSupplierId: item.chosenSupplierId || null,
+            chosenSupplierId,
             contractedUnitPrice: Number(item.contractedUnitPrice) || 0,
             contractedTotal: Number(item.contractedTotal) || 0,
             purchasedTotal: Number(item.purchasedTotal) || 0,
@@ -398,7 +427,7 @@ export async function POST(request: Request) {
             description: item.description || null,
             unit: item.unit || 'un',
             quantity: Number(item.quantity) || 0,
-            chosenSupplierId: item.chosenSupplierId || null,
+            chosenSupplierId,
             contractedUnitPrice: Number(item.contractedUnitPrice) || 0,
             contractedTotal: Number(item.contractedTotal) || 0,
             purchasedTotal: Number(item.purchasedTotal) || 0,
@@ -409,19 +438,15 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        budgetItemIdSet.add(item.id);
         restoredSummary.budgetItems++;
-      }
+      });
     }
 
     // 8. Cotações (Quotations)
     if (Array.isArray(backupData.quotations)) {
-      for (const q of backupData.quotations) {
-        if (!q.id) continue;
-        const bExists = await prisma.budgetItem.findUnique({ where: { id: q.budgetItemId } });
-        const pExists = await prisma.project.findUnique({ where: { id: q.projectId } });
-        const sExists = await prisma.supplier.findUnique({ where: { id: q.supplierId } });
-        if (!bExists || !pExists || !sExists) continue;
-
+      await runInChunks(backupData.quotations, 5, async (q: any) => {
+        if (!q.id || !budgetItemIdSet.has(q.budgetItemId) || !projectIdSet.has(q.projectId) || !supplierIdSet.has(q.supplierId)) return;
         await prisma.quotation.upsert({
           where: { id: q.id },
           create: {
@@ -461,18 +486,15 @@ export async function POST(request: Request) {
           },
         });
         restoredSummary.quotations++;
-      }
+      });
     }
 
     // 9. Compras (Purchases)
     if (Array.isArray(backupData.purchases)) {
-      for (const pur of backupData.purchases) {
-        if (!pur.id) continue;
-        const pExists = await prisma.project.findUnique({ where: { id: pur.projectId } });
-        const ccExists = await prisma.costCenter.findUnique({ where: { id: pur.costCenterId } });
-        const bExists = await prisma.budgetItem.findUnique({ where: { id: pur.budgetItemId } });
-        const sExists = await prisma.supplier.findUnique({ where: { id: pur.supplierId } });
-        if (!pExists || !ccExists || !bExists || !sExists) continue;
+      await runInChunks(backupData.purchases, 5, async (pur: any) => {
+        if (!pur.id || !projectIdSet.has(pur.projectId) || !budgetItemIdSet.has(pur.budgetItemId) || !supplierIdSet.has(pur.supplierId)) return;
+        const targetCostCenterId = costCenterIdSet.has(pur.costCenterId) ? pur.costCenterId : defaultCostCenterId;
+        if (!targetCostCenterId) return;
 
         await prisma.purchase.upsert({
           where: { id: pur.id },
@@ -480,7 +502,7 @@ export async function POST(request: Request) {
             id: pur.id,
             purchaseNumber: pur.purchaseNumber || 'COMP-0000',
             projectId: pur.projectId,
-            costCenterId: pur.costCenterId,
+            costCenterId: targetCostCenterId,
             budgetItemId: pur.budgetItemId,
             supplierId: pur.supplierId,
             date: pur.date ? new Date(pur.date) : new Date(),
@@ -515,37 +537,27 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        purchaseIdSet.add(pur.id);
         restoredSummary.purchases++;
-      }
+      });
     }
 
     // 10. Contas a Pagar (AccountsPayable)
     if (Array.isArray(backupData.accountsPayable)) {
-      for (const ap of backupData.accountsPayable) {
-        if (!ap.id) continue;
-        const pExists = await prisma.project.findUnique({ where: { id: ap.projectId } });
-        const ccExists = await prisma.costCenter.findUnique({ where: { id: ap.costCenterId } });
-        const sExists = await prisma.supplier.findUnique({ where: { id: ap.supplierId } });
-        if (!pExists || !ccExists || !sExists) continue;
+      await runInChunks(backupData.accountsPayable, 5, async (ap: any) => {
+        if (!ap.id || !projectIdSet.has(ap.projectId) || !supplierIdSet.has(ap.supplierId)) return;
+        const targetCostCenterId = costCenterIdSet.has(ap.costCenterId) ? ap.costCenterId : defaultCostCenterId;
+        if (!targetCostCenterId) return;
 
-        let bankAccountId = ap.bankAccountId;
-        if (bankAccountId) {
-          const bankExists = await prisma.bankAccount.findUnique({ where: { id: bankAccountId } });
-          if (!bankExists) bankAccountId = null;
-        }
-
-        let purchaseId = ap.purchaseId;
-        if (purchaseId) {
-          const purExists = await prisma.purchase.findUnique({ where: { id: purchaseId } });
-          if (!purExists) purchaseId = null;
-        }
+        const purchaseId = ap.purchaseId && purchaseIdSet.has(ap.purchaseId) ? ap.purchaseId : null;
+        const bankAccountId = ap.bankAccountId && bankAccountIdSet.has(ap.bankAccountId) ? ap.bankAccountId : null;
 
         await prisma.accountPayable.upsert({
           where: { id: ap.id },
           create: {
             id: ap.id,
             projectId: ap.projectId,
-            costCenterId: ap.costCenterId,
+            costCenterId: targetCostCenterId,
             purchaseId,
             supplierId: ap.supplierId,
             documentNumber: ap.documentNumber || null,
@@ -575,17 +587,15 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           },
         });
+        accountPayableIdSet.add(ap.id);
         restoredSummary.accountsPayable++;
-      }
+      });
     }
 
     // 11. Pagamentos Realizados (Payments)
     if (Array.isArray(backupData.payments)) {
-      for (const pay of backupData.payments) {
-        if (!pay.id) continue;
-        const apExists = await prisma.accountPayable.findUnique({ where: { id: pay.accountPayableId } });
-        if (!apExists) continue;
-
+      await runInChunks(backupData.payments, 5, async (pay: any) => {
+        if (!pay.id || !accountPayableIdSet.has(pay.accountPayableId)) return;
         await prisma.payment.upsert({
           where: { id: pay.id },
           create: {
@@ -607,13 +617,13 @@ export async function POST(request: Request) {
           },
         });
         restoredSummary.payments++;
-      }
+      });
     }
 
     // 12. Anexos (Attachments)
     if (Array.isArray(backupData.attachments)) {
-      for (const att of backupData.attachments) {
-        if (!att.id) continue;
+      await runInChunks(backupData.attachments, 5, async (att: any) => {
+        if (!att.id) return;
         await prisma.attachment.upsert({
           where: { id: att.id },
           create: {
@@ -634,7 +644,7 @@ export async function POST(request: Request) {
           },
         });
         restoredSummary.attachments++;
-      }
+      });
     }
 
     return NextResponse.json({
