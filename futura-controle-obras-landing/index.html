@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Futura Controle de Obras | Gestão de Obras, Compras e Financeiro</title>
+  <meta name="description" content="Controle orçamento, compras, fornecedores e financeiro da sua obra em um único sistema. Gestão integrada para construtoras, empreiteiros, engenheiros e investidores.">
+  <meta name="keywords" content="gestão de obras, software para construtora, controle de compras obra, orçamento executivo, SINAPI, fluxo de caixa construção civil, cotação de fornecedores, kitnets">
+  <meta name="author" content="Futura Controle de Obras">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#0B0F17">
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://futuragerenciadordeobras.netlify.app/">
+  <meta property="og:title" content="Futura Controle de Obras | Gestão Integrada de Obras e Suprimentos">
+  <meta property="og:description" content="Pare de descobrir o prejuízo da sua obra quando já é tarde. Conecte orçamento, compras e financeiro em um único ecossistema.">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:image" content="favicon.svg">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Futura Controle de Obras | Gestão de Obras, Compras e Financeiro">
+  <meta name="twitter:description" content="Controle orçamento, compras, fornecedores e financeiro em um único sistema.">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles/main.css">
+
+  <!-- Structured Data (Schema.org) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Futura Controle de Obras",
+    "operatingSystem": "All (Web, Mobile, Desktop)",
+    "applicationCategory": "BusinessApplication",
+    "description": "Software SaaS brasileiro para gestão completa de obras, orçamentos executivos, cotação de suprimentos e financeiro com regra anti-estouro.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "BRL"
+    },
+    "featureList": [
+      "Orçamento Executivo com SINAPI",
+      "Mapa Comparativo de Cotações",
+      "Regra Anti-Estouro Orçamentário",
+      "Contas a Pagar e Fluxo de Caixa",
+      "Trilha de Auditoria por Usuário e IP",
+      "Backup e Restauração em Micro-Lotes"
+    ]
+  }
+  </script>
+
+  <!-- Scripts centrais -->
+  <script src="scripts/config.js" defer></script>
+  <script src="scripts/main.js" defer></script>
+</head>
+<body>
+
+  <!-- ========================================================================
+       NAVBAR
+       ======================================================================== -->
+  <nav class="navbar" id="mainNavbar">
+    <div class="container nav-container">
+      <a href="#" class="brand-logo" aria-label="Futura Controle de Obras - Página Inicial">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 48 48" fill="none">
+            <path d="M12 36V14L24 8L36 14V36" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 22L24 16L36 22" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+            <path d="M24 16V38" stroke="#34D399" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="24" cy="24" r="3.5" fill="#34D399"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">FUTURA</span>
+          <span class="brand-tagline">CONTROLE DE OBRAS</span>
+        </div>
+      </a>
+
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="#problema" class="nav-link">O Problema</a></li>
+        <li><a href="#como-funciona" class="nav-link">Como Funciona</a></li>
+        <li><a href="#anti-estouro" class="nav-link">Regra Anti-Estouro</a></li>
+        <li><a href="#recursos" class="nav-link">Recursos</a></li>
+        <li><a href="#para-quem" class="nav-link">Para Quem É</a></li>
+        <li><a href="#planos" class="nav-link">Planos</a></li>
+        <li><a href="#faq" class="nav-link">Dúvidas</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="#" data-cta="login" class="btn-login">Entrar</a>
+        <a href="#" data-cta="signup" class="btn-primary">Começar Grátis</a>
+        <button class="mobile-toggle" id="mobileMenuToggle" aria-label="Abrir Menu de Navegação" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ========================================================================
+       HERO SECTION
+       ======================================================================== -->
+  <header class="hero-section">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          GESTÃO DE OBRAS • SUPRIMENTOS • FINANCEIRO
+        </div>
+
+        <h1 class="hero-headline">
+          Pare de descobrir o prejuízo da sua obra quando já é tarde.
+        </h1>
+
+        <p class="hero-subheadline">
+          Controle orçamento, compras, fornecedores e financeiro em um único sistema — e saiba exatamente para onde está indo cada centavo da sua obra.
+        </p>
+
+        <div class="hero-ctas">
+          <a href="#" data-cta="signup" class="btn-primary btn-lg">
+            QUERO CONTROLAR MINHA OBRA
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+          <a href="#como-funciona" class="btn-secondary btn-lg">
+            VER COMO FUNCIONA
+          </a>
+        </div>
+
+        <div class="hero-security-note">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <span>Comece simples. Tenha controle desde o primeiro orçamento.</span>
+        </div>
+
+        <div class="hero-metrics-pill">
+          <div class="hero-metric-item">
+            <span class="hero-metric-value">100%</span>
+            <span class="hero-metric-label">Web & Celular</span>
+          </div>
+          <div class="hero-metric-item">
+            <span class="hero-metric-value">SINAPI</span>
+            <span class="hero-metric-label">Base Oficial Integrada</span>
+          </div>
+          <div class="hero-metric-item">
+            <span class="hero-metric-value">0</span>
+            <span class="hero-metric-label">Planilhas Perdidas</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mockup do Software em HTML/CSS Puro (Sem dependência de imagens pesadas) -->
+      <div class="mockup-wrapper">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <div class="mockup-dots">
+              <span class="mockup-dot dot-red"></span>
+              <span class="mockup-dot dot-yellow"></span>
+              <span class="mockup-dot dot-green"></span>
+            </div>
+            <div class="mockup-project-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              </svg>
+              <span>Obra: Residencial Jardins (8 Kitnets)</span>
+            </div>
+          </div>
+
+          <div class="mockup-body">
+            <div class="mockup-kpis">
+              <div class="mockup-kpi">
+                <div class="mockup-kpi-label">Orçado Total</div>
+                <div class="mockup-kpi-value">R$ 485.000</div>
+                <div class="mockup-kpi-status">Base SINAPI</div>
+              </div>
+              <div class="mockup-kpi">
+                <div class="mockup-kpi-label">Comprometido</div>
+                <div class="mockup-kpi-value">R$ 312.450</div>
+                <div class="mockup-kpi-status">64.4% do total</div>
+              </div>
+              <div class="mockup-kpi">
+                <div class="mockup-kpi-label">Saldo Restante</div>
+                <div class="mockup-kpi-value">R$ 172.550</div>
+                <div class="mockup-kpi-status alert">Regra Ativa: Bloqueio</div>
+              </div>
+            </div>
+
+            <div class="mockup-stages">
+              <div class="mockup-stage-header">
+                <span>Progresso por Etapa Físico-Financeira</span>
+                <span style="color: #34D399;">Visão Consolidada</span>
+              </div>
+
+              <div class="stage-bar-item">
+                <div class="stage-bar-info">
+                  <span>1. Fundação & Terraplanagem</span>
+                  <span>100% (R$ 58.000)</span>
+                </div>
+                <div class="stage-progress-track">
+                  <div class="stage-progress-fill" style="width: 100%;"></div>
+                </div>
+              </div>
+
+              <div class="stage-bar-item">
+                <div class="stage-bar-info">
+                  <span>2. Estrutura de Concreto</span>
+                  <span>85% (R$ 114.500)</span>
+                </div>
+                <div class="stage-progress-track">
+                  <div class="stage-progress-fill" style="width: 85%;"></div>
+                </div>
+              </div>
+
+              <div class="stage-bar-item">
+                <div class="stage-bar-info">
+                  <span>3. Alvenaria & Vedação</span>
+                  <span>40% (R$ 68.200)</span>
+                </div>
+                <div class="stage-progress-track">
+                  <div class="stage-progress-fill" style="width: 40%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mockup-alert-box">
+              <div class="mockup-alert-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </div>
+              <div class="mockup-alert-text">
+                <strong>Alerta Orçamentário em Tempo Real:</strong> Cotação de Cimento CP-II superou o previsto em 3.8%. A regra de bloqueio exigiu autorização prévia.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       MICROCOPY BARRA 1
+       ======================================================================== -->
+  <div class="microcopy-bar">
+    <div class="container microcopy-grid">
+      <div class="microcopy-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>Antes de comprar, compare.</span>
+      </div>
+      <div class="microcopy-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>Antes de aprovar, confira.</span>
+      </div>
+      <div class="microcopy-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>Antes de pagar, saiba.</span>
+      </div>
+      <div class="microcopy-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>Antes do prejuízo, controle.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       SEÇÃO: O PROBLEMA
+       ======================================================================== -->
+  <section class="section section-alt" id="problema">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">A Realidade do Canteiro</div>
+        <h2 class="section-title">Uma obra não costuma estourar de uma vez.</h2>
+        <p class="section-subtitle">
+          Ela começa a sair do controle em pequenas decisões diárias que ninguém percebe. Quando orçamento, compras e financeiro estão separados, você descobre o buraco depois que o dinheiro já saiu da conta.
+        </p>
+      </div>
+
+      <div class="problem-sequence">
+        <div class="problem-step">1. Orçamento Inicial</div>
+        <span class="problem-arrow">→</span>
+        <div class="problem-step">2. Cotação Rápida</div>
+        <span class="problem-arrow">→</span>
+        <div class="problem-step">3. Compra por WhatsApp</div>
+        <span class="problem-arrow">→</span>
+        <div class="problem-step">4. Pagamento Sem Conferência</div>
+        <span class="problem-arrow">→</span>
+        <div class="problem-step fatal">5. PREJUÍZO INESPERADO</div>
+      </div>
+
+      <div class="problem-cards-grid">
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          </div>
+          <h3 class="problem-card-title">Planilhas Espalhadas</h3>
+          <p class="problem-card-text">O engenheiro mexe em uma planilha, o comprador em outra e o financeiro confia em anotações no caderno. Ninguém tem a versão correta.</p>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </div>
+          <h3 class="problem-card-title">Compras Sem Comparação</h3>
+          <p class="problem-card-text">Comprar com o mesmo fornecedor por comodidade, sem considerar frete, impostos ou condições de pagamento, drena milhares de reais a cada pedido.</p>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          </div>
+          <h3 class="problem-card-title">Orçamento Desatualizado</h3>
+          <p class="problem-card-text">Um item orçado há 3 meses já subiu de preço. Sem saber o saldo restante atualizado, o gestor aprova compras que já estouraram a verba.</p>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <h3 class="problem-card-title">Informações no WhatsApp</h3>
+          <p class="problem-card-text">Preços negociados em conversas soltas, boletos recebidos por áudio e notas fiscais perdidas em prints. Zero rastreabilidade.</p>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <h3 class="problem-card-title">Falta de Auditoria</h3>
+          <p class="problem-card-text">Quando falta dinheiro na conta, ninguém sabe quem autorizou aquele pedido de material a mais ou quem alterou a composição de custo.</p>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
+          <h3 class="problem-card-title">Surpresas no Caixa</h3>
+          <p class="problem-card-text">Boletos vencendo hoje sem previsão no fluxo de caixa. O construtor é obrigado a pagar juros ou transferir recursos de outra obra.</p>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 48px;">
+        <p style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 20px;">
+          Existe uma forma mais inteligente de controlar tudo isso.
+        </p>
+        <a href="#como-funciona" class="btn-primary">
+          Conheça a Transformação do Futura
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO: TRANSFORMAÇÃO & ECOSSISTEMA
+       ======================================================================== -->
+  <section class="section section-dark" id="como-funciona">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">A Transformação</div>
+        <h2 class="section-title">Do orçamento ao pagamento. Tudo conectado.</h2>
+        <p class="section-subtitle">
+          Uma alteração no orçamento não deveria ficar presa em uma planilha enquanto o financeiro continua trabalhando com números antigos. No Futura Controle de Obras, cada etapa conversa com a próxima.
+        </p>
+      </div>
+
+      <div class="ecosystem-flow-container">
+        <div class="ecosystem-chain">
+          <div class="ecosystem-node">
+            <div class="ecosystem-node-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            </div>
+            <span class="ecosystem-node-title">1. Orçamento</span>
+          </div>
+
+          <span class="ecosystem-arrow">→</span>
+
+          <div class="ecosystem-node">
+            <div class="ecosystem-node-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            </div>
+            <span class="ecosystem-node-title">2. Cotações</span>
+          </div>
+
+          <span class="ecosystem-arrow">→</span>
+
+          <div class="ecosystem-node">
+            <div class="ecosystem-node-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+            </div>
+            <span class="ecosystem-node-title">3. Fornecedores</span>
+          </div>
+
+          <span class="ecosystem-arrow">→</span>
+
+          <div class="ecosystem-node">
+            <div class="ecosystem-node-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            </div>
+            <span class="ecosystem-node-title">4. Pedido Compra</span>
+          </div>
+
+          <span class="ecosystem-arrow">→</span>
+
+          <div class="ecosystem-node">
+            <div class="ecosystem-node-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            </div>
+            <span class="ecosystem-node-title">5. Contas a Pagar</span>
+          </div>
+
+          <span class="ecosystem-arrow">→</span>
+
+          <div class="ecosystem-node">
+            <div class="ecosystem-node-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            </div>
+            <span class="ecosystem-node-title">6. Fluxo de Caixa</span>
+          </div>
+        </div>
+
+        <p class="ecosystem-highlight-text">
+          Cada orçamento influencia uma compra. Cada compra impacta o financeiro. Cada pagamento atualiza a sua visão da obra. O Futura une essas pontas para que você nunca mais seja pego de surpresa.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO: PRINCIPAL DIFERENCIAL (REGRA ANTI-ESTOURO)
+       ======================================================================== -->
+  <section class="section anti-estouro-section" id="anti-estouro">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Diferencial Exclusivo</div>
+        <h2 class="section-title">Seu orçamento pode avisar antes do prejuízo acontecer.</h2>
+        <p class="section-subtitle">
+          Planilhas registram o que já aconteceu. O Futura ajuda você a controlar o que pode acontecer através da Regra Anti-Estouro Orçamentário.
+        </p>
+      </div>
+
+      <div class="rules-showcase">
+        <!-- Regra 1 -->
+        <div class="rule-card warning">
+          <div class="rule-badge">Modo 1</div>
+          <h3 class="rule-title">🟡 Apenas Avisar</h3>
+          <p class="rule-desc">
+            O sistema detecta quando um insumo ou serviço está superando o valor unitário ou quantidade contratada no orçamento e exibe um alerta visual imediato no momento do lançamento.
+          </p>
+          <div class="rule-demo-box">
+            <span style="color: #FBBF24; font-weight: 700;">Alerta em tela:</span> "Item Aço CA-50 10mm está 6% acima do custo previsto no orçamento."
+          </div>
+        </div>
+
+        <!-- Regra 2 -->
+        <div class="rule-card confirm">
+          <div class="rule-badge">Modo 2</div>
+          <h3 class="rule-title">🟠 Confirmação Explícita</h3>
+          <p class="rule-desc">
+            Se uma compra ultrapassa o saldo disponível do item, o sistema abre uma janela de segurança exigindo justificativa e autorização formal do responsável técnico ou gestor da obra.
+          </p>
+          <div class="rule-demo-box">
+            <span style="color: #FB923C; font-weight: 700;">Trava de Segurança:</span> "Esta compra excede o saldo em R$ 1.450. Digite a justificativa para liberar."
+          </div>
+        </div>
+
+        <!-- Regra 3 (Destaque Máximo) -->
+        <div class="rule-card block">
+          <div class="rule-badge">Modo 3 • Proteção Máxima</div>
+          <h3 class="rule-title">🔴 Bloqueio Total</h3>
+          <p class="rule-desc">
+            Tolerância zero ao descontrole. O sistema impede rigorosamente a gravação de qualquer pedido de compra cujo valor supere o saldo orçado disponível para a etapa.
+          </p>
+          <div class="rule-demo-box" style="border-color: rgba(239, 68, 68, 0.4);">
+            <span style="color: #F87171; font-weight: 700;">Ação Bloqueada:</span> "Saldo insuficiente para o item no orçamento. Compra rejeitada pelo sistema."
+          </div>
+        </div>
+      </div>
+
+      <div class="rule-impact-quote">
+        <p>"Planilhas de Excel aceitam qualquer número que você digitar. O Futura protege o seu bolso contra decisões impulsivas."</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       RECURSO 1: ORÇAMENTO ESTRUTURADO + SINAPI + IMPORTAÇÃO EXCEL
+       ======================================================================== -->
+  <section class="section" id="recursos">
+    <div class="container">
+      <div class="feature-split">
+        <div class="feature-info">
+          <div class="section-eyebrow">Orçamento Executivo</div>
+          <h3>Comece com um orçamento estruturado. Não com uma planilha perdida.</h3>
+          <p>
+            Organize sua obra da fundação ao acabamento com divisão lógica de etapas, composições analíticas e consulta à base oficial SINAPI da Caixa Econômica Federal.
+          </p>
+
+          <ul class="feature-checklist">
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Etapas completas: Fundação, Estrutura, Alvenaria, Elétrica, Hidráulica, Acabamentos.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Base SINAPI Nacional: Custos unitários e composições de serviços oficiais.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Importe suas planilhas existentes: Suporte nativo para arquivos Excel (.xlsx e .xls).</span>
+            </li>
+          </ul>
+
+          <div style="margin-top: 8px;">
+            <a href="#" data-cta="signup" class="btn-primary">
+              Criar Meu Primeiro Orçamento
+            </a>
+          </div>
+        </div>
+
+        <div class="feature-visual">
+          <div style="background-color: var(--bg-dark-surface); border: 1px solid var(--bg-dark-border); border-radius: var(--radius-lg); padding: 24px; color: #FFFFFF;">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); pb: 12px; margin-bottom: 16px;">
+              <span style="font-weight: 700; font-size: 14px;">Estrutura do Orçamento Executivo</span>
+              <span style="font-size: 11px; color: var(--emerald-400); background: rgba(16,185,129,0.1); padding: 2px 8px; border-radius: 4px;">SINAPI Ativo</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+              <div style="padding: 10px; background: rgba(255,255,255,0.04); border-radius: 6px; display: flex; justify-content: space-between;">
+                <span>01. Fundação e Infraestrutura</span>
+                <span style="font-weight: 700; color: #34D399;">R$ 58.400,00</span>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.04); border-radius: 6px; display: flex; justify-content: space-between;">
+                <span>02. Superestrutura (Pilares/Vigas)</span>
+                <span style="font-weight: 700; color: #34D399;">R$ 114.500,00</span>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.04); border-radius: 6px; display: flex; justify-content: space-between;">
+                <span>03. Alvenaria e Divisórias</span>
+                <span style="font-weight: 700; color: #34D399;">R$ 68.200,00</span>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.04); border-radius: 6px; display: flex; justify-content: space-between;">
+                <span>04. Instalações Hidrossanitárias</span>
+                <span style="font-weight: 700; color: #34D399;">R$ 42.100,00</span>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.04); border-radius: 6px; display: flex; justify-content: space-between;">
+                <span>05. Revestimentos e Acabamentos</span>
+                <span style="font-weight: 700; color: #34D399;">R$ 96.800,00</span>
+              </div>
+            </div>
+
+            <div style="margin-top: 16px; padding: 12px; background: rgba(16,185,129,0.08); border: 1px dashed rgba(16,185,129,0.3); border-radius: 8px; text-align: center; font-size: 11px; color: var(--emerald-300);">
+              📥 Arraste sua planilha Excel para importar todos os itens em menos de 10 segundos
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       RECURSO 2: COTAÇÕES & MAPA COMPARATIVO
+       ======================================================================== -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="feature-split reverse">
+        <div class="feature-info">
+          <div class="section-eyebrow">Inteligência em Suprimentos</div>
+          <h3>Pare de escolher fornecedor no escuro.</h3>
+          <p>
+            Antes de gastar um único real, abra uma cotação e compare propostas lado a lado. O Futura analisa automaticamente preço unitário, frete, impostos e prazo de entrega para destacar a melhor oportunidade.
+          </p>
+
+          <ul class="feature-checklist">
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Mapa comparativo automático entre fornecedores concorrentes.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Destaque inteligente da melhor oferta levando em conta custo total e prazo.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Histórico de preços por fornecedor para negociar sempre com vantagem.</span>
+            </li>
+          </ul>
+
+          <div style="margin-top: 8px;">
+            <a href="#" data-cta="signup" class="btn-primary">
+              Quero Comparar Melhor Minhas Compras
+            </a>
+          </div>
+        </div>
+
+        <div class="feature-visual">
+          <div class="comparison-table-mockup">
+            <div class="comp-header">
+              <div class="comp-header-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+                <span>Mapa de Cotação: Aço CA-50 10mm (1.500 kg)</span>
+              </div>
+              <span class="comp-badge-item">Etapa: Estrutura</span>
+            </div>
+
+            <div class="comp-rows">
+              <div class="comp-row head">
+                <span>Fornecedor</span>
+                <span>Preço/kg</span>
+                <span>Frete</span>
+                <span>Prazo</span>
+                <span>Total Final</span>
+              </div>
+
+              <div class="comp-row">
+                <span>Distribuidora Minas Aço</span>
+                <span>R$ 5,80</span>
+                <span>R$ 150</span>
+                <span>4 dias</span>
+                <span style="font-weight: 700;">R$ 8.850,00</span>
+              </div>
+
+              <!-- Melhor oferta destacada -->
+              <div class="comp-row best-offer">
+                <span>
+                  <strong>Comercial Gerdau Sul</strong>
+                  <span class="comp-badge-best">Melhor Oferta (-7.6%)</span>
+                </span>
+                <span style="color: var(--emerald-700); font-weight: 700;">R$ 5,45</span>
+                <span style="color: var(--emerald-700);">Grátis</span>
+                <span>2 dias</span>
+                <span style="color: var(--emerald-700); font-weight: 800;">R$ 8.175,00</span>
+              </div>
+
+              <div class="comp-row">
+                <span>Casa dos Ferros Ltda</span>
+                <span>R$ 6,10</span>
+                <span>R$ 100</span>
+                <span>5 dias</span>
+                <span style="font-weight: 700;">R$ 9.250,00</span>
+              </div>
+            </div>
+
+            <div style="padding: 12px 18px; background: #F8FAFC; border-top: 1px solid var(--border-light); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;">
+              <span>💡 Economia identificada nesta cotação: <strong>R$ 1.075,00</strong></span>
+              <span style="color: var(--emerald-600); font-weight: 700;">Aprovação em 1 clique</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       RECURSO 3: COMPRA SEM RETRABALHO
+       ======================================================================== -->
+  <section class="section">
+    <div class="container">
+      <div class="feature-split">
+        <div class="feature-info">
+          <div class="section-eyebrow">Zero Retrabalho</div>
+          <h3>Da cotação aprovada ao pedido de compra em um clique.</h3>
+          <p>
+            Você não precisa lançar a mesma informação várias vezes. Quando a cotação é escolhida, o sistema formaliza o pedido de compra, abate o saldo do orçamento e cria o título a pagar no financeiro simultaneamente.
+          </p>
+
+          <div style="background-color: var(--bg-light-alt); border-left: 4px solid var(--emerald-600); padding: 16px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin: 8px 0;">
+            <p style="font-size: 15px; font-weight: 700; color: var(--text-primary);">
+              Menos retrabalho. Menos erro. Mais controle.
+            </p>
+          </div>
+
+          <ul class="feature-checklist">
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Emissão de Ordem de Compra formal para enviar ao fornecedor por WhatsApp ou E-mail.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Vinculação direta à Nota Fiscal e upload do comprovante ou contrato em anexo.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="feature-visual">
+          <div style="background-color: var(--bg-dark); border-radius: var(--radius-lg); padding: 32px; color: #FFFFFF; box-shadow: var(--shadow-xl);">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                <span style="width: 28px; height: 28px; border-radius: 50%; background: var(--emerald-600); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">✓</span>
+                <div>
+                  <strong style="font-size: 13px; display: block;">Cotação Aprovada</strong>
+                  <span style="font-size: 11px; color: #94A3B8;">Fornecedor Comercial Gerdau Sul selecionado</span>
+                </div>
+              </div>
+
+              <div style="text-align: center; color: var(--emerald-400);">↓</div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                <span style="width: 28px; height: 28px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">2</span>
+                <div>
+                  <strong style="font-size: 13px; display: block;">Pedido de Compra Formalizado</strong>
+                  <span style="font-size: 11px; color: #94A3B8;">Pedido COMP-0042 gerado automaticamente</span>
+                </div>
+              </div>
+
+              <div style="text-align: center; color: var(--emerald-400);">↓</div>
+
+              <div style="display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                <span style="width: 28px; height: 28px; border-radius: 50%; background: #D97706; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">3</span>
+                <div>
+                  <strong style="font-size: 13px; display: block;">Contas a Pagar Alimentado</strong>
+                  <span style="font-size: 11px; color: #94A3B8;">Parcela de R$ 8.175 agendada no Fluxo de Caixa</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       RECURSO 4: FINANCEIRO & FLUXO DE CAIXA
+       ======================================================================== -->
+  <section class="section section-dark">
+    <div class="container">
+      <div class="feature-split reverse">
+        <div class="feature-info">
+          <div class="section-eyebrow">Engenharia Financeira</div>
+          <h3>Você sabe quanto sua obra já gastou. Mas sabe quanto ela ainda vai consumir?</h3>
+          <p>
+            Decisão boa começa com informação financeira confiável. O Futura entrega a visão completa do saldo disponível nas contas da construtora, despesas a vencer e a projeção exata do custo até a entrega das chaves.
+          </p>
+
+          <ul class="feature-checklist">
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span style="color: #F8FAFC;">Contas a Pagar organizadas: Vencidas, vencendo hoje e futuras por obra.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span style="color: #F8FAFC;">Baixas financeiras brasileiras: PIX, Boletos bancários, Cartão de Crédito e TED.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span style="color: #F8FAFC;">Anexo de comprovantes de pagamento para auditoria imediata.</span>
+            </li>
+          </ul>
+
+          <div style="margin-top: 8px;">
+            <a href="#" data-cta="signup" class="btn-primary">
+              Controlar o Financeiro da Minha Obra
+            </a>
+          </div>
+        </div>
+
+        <div class="feature-visual">
+          <div style="background-color: #0F172A; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-lg); padding: 24px;">
+            <div style="font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 12px;">Fluxo de Caixa em Tempo Real</div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+              <div style="background: #1E293B; padding: 12px; border-radius: 8px;">
+                <span style="font-size: 10px; color: #94A3B8; display: block;">Total Pago Efetivo</span>
+                <span style="font-size: 18px; font-weight: 800; color: #10B981;">R$ 248.100</span>
+              </div>
+              <div style="background: #1E293B; padding: 12px; border-radius: 8px;">
+                <span style="font-size: 10px; color: #94A3B8; display: block;">Contas a Vencer</span>
+                <span style="font-size: 18px; font-weight: 800; color: #F59E0B;">R$ 64.350</span>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
+              <div style="font-size: 12px; font-weight: 700; margin-bottom: 8px;">Próximos Vencimentos de Contratos</div>
+              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px;">
+                <div style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                  <span>Concreto Usinado FCK 25 (Lafarge)</span>
+                  <span style="color: #F87171; font-weight: 700;">Vence Hoje: R$ 14.800</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                  <span>Tubos e Conexões Tigre (C&C)</span>
+                  <span style="color: #FBBF24;">Em 5 dias: R$ 6.450</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       RECURSO 5: AUDITORIA, EQUIPE & BACKUP RESILIENTE
+       ======================================================================== -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="feature-split">
+        <div class="feature-info">
+          <div class="section-eyebrow">Governança & Segurança</div>
+          <h3>Quando várias pessoas mexem na obra, controle de acesso deixa de ser luxo.</h3>
+          <p>
+            Atribua funções claras para Administradores, Engenheiros, Compradores e Financeiro. Cada ação no sistema fica registrada com nome do usuário, data, horário e endereço IP.
+          </p>
+
+          <ul class="feature-checklist">
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Níveis de Acesso: Engenheiro orça, Comprador cota, Financeiro paga.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Trilha de Auditoria: Saiba exatamente quem criou, editou ou excluiu qualquer registro.</span>
+            </li>
+            <li class="feature-check-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Backup com 1 Clique e Restauração em Micro-Lotes (Planos Pro e Premium).</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="feature-visual">
+          <div class="audit-mockup-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); pb: 8px;">
+              <span style="font-size: 12px; font-weight: 700;">Registro de Auditoria Recente</span>
+              <span style="font-size: 10px; color: var(--emerald-400);">Criptografia Ativa</span>
+            </div>
+
+            <div class="audit-log-item">
+              <div class="audit-user">
+                <div class="audit-avatar">WL</div>
+                <div>
+                  <strong style="display: block; font-size: 11px;">Wellington (Engenheiro)</strong>
+                  <span style="font-size: 10px; color: #94A3B8;">Aprovou Cotação COT-019 • Obra Jardins</span>
+                </div>
+              </div>
+              <span style="font-size: 10px; color: #64748B;">Hoje, 09:42</span>
+            </div>
+
+            <div class="audit-log-item">
+              <div class="audit-user">
+                <div class="audit-avatar" style="background: #2563EB;">MS</div>
+                <div>
+                  <strong style="display: block; font-size: 11px;">Marcos (Financeiro)</strong>
+                  <span style="font-size: 10px; color: #94A3B8;">Baixa via PIX: R$ 8.175 • Compra COMP-0042</span>
+                </div>
+              </div>
+              <span style="font-size: 10px; color: #64748B;">Hoje, 10:15</span>
+            </div>
+
+            <div class="audit-log-item" style="border-bottom: none;">
+              <div class="audit-user">
+                <div class="audit-avatar" style="background: #D97706;">CA</div>
+                <div>
+                  <strong style="display: block; font-size: 11px;">Camila (Administrador)</strong>
+                  <span style="font-size: 10px; color: #94A3B8;">Exportou Cópia de Backup JSON (.json)</span>
+                </div>
+              </div>
+              <span style="font-size: 10px; color: #64748B;">Ontem, 17:30</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO: PARA QUEM É
+       ======================================================================== -->
+  <section class="section" id="para-quem">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Público-Alvo</div>
+        <h2 class="section-title">Construído para quem vive a realidade das obras.</h2>
+        <p class="section-subtitle">
+          Seja você um construtor de kitnets ou o gestor de uma construtora com dezenas de colaboradores, o Futura se molda à sua escala.
+        </p>
+      </div>
+
+      <div class="audience-grid">
+        <div class="audience-card">
+          <div class="audience-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="2"></line><line x1="15" y1="22" x2="15" y2="2"></line></svg>
+          </div>
+          <h3 class="audience-title">Construtoras</h3>
+          <p class="audience-desc">Controle múltiplos canteiros, equipes separadas e fluxo de caixa consolidado.</p>
+        </div>
+
+        <div class="audience-card">
+          <div class="audience-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+          </div>
+          <h3 class="audience-title">Empreiteiros</h3>
+          <p class="audience-desc">Clareza no que foi acordado com o cliente, compras de materiais e pagamentos de equipe.</p>
+        </div>
+
+        <div class="audience-card">
+          <div class="audience-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+          </div>
+          <h3 class="audience-title">Engenheiros</h3>
+          <p class="audience-desc">Transforme o orçamento executivo em uma ferramenta de proteção ativa contra desvios.</p>
+        </div>
+
+        <div class="audience-card">
+          <div class="audience-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </div>
+          <h3 class="audience-title">Investidores</h3>
+          <p class="audience-desc">Transparência total dos custos em empreendimentos construídos para venda ou locação.</p>
+        </div>
+
+        <div class="audience-card">
+          <div class="audience-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </div>
+          <h3 class="audience-title">Kitnets e Casas</h3>
+          <p class="audience-desc">Substitua cadernos e planilhas confusas por um painel simples e profissional.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO: ANTES VS DEPOIS
+       ======================================================================== -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Comparativo Real</div>
+        <h2 class="section-title">Como a sua obra funciona hoje vs. Com o Futura</h2>
+        <p class="section-subtitle">
+          Veja o impacto de ter uma camada de inteligência e controle financeiro sobre suas operações.
+        </p>
+      </div>
+
+      <div class="before-after-grid">
+        <div class="comparison-box before">
+          <div class="comp-box-header">
+            <span>❌ Como você opera hoje</span>
+          </div>
+          <ul class="comp-list">
+            <li class="comp-item">
+              <span>•</span>
+              <span>Informações desorganizadas entre Excel, cadernos e grupos de WhatsApp.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Compras feitas às pressas no mesmo fornecedor sem comparar preços.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Orçamento vulnerável a qualquer pedido de material adicional.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Financeiro descobre os boletos no dia do vencimento.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Nenhuma rastreabilidade de quem comprou ou autorizou o gasto.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Decisões baseadas em "achismo" sobre quanto a obra ainda vai custar.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="comparison-box after">
+          <div class="comp-box-header">
+            <span>✓ Com o Futura Controle de Obras</span>
+          </div>
+          <ul class="comp-list">
+            <li class="comp-item">
+              <span>•</span>
+              <span>Orçamento, suprimentos, compras e financeiro 100% conectados.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Mapa comparativo que encontra a melhor compra automaticamente.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Regra Anti-Estouro que alerta ou bloqueia antes do prejuízo.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Fluxo de caixa projetado com contas organizadas por vencimento.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Trilha de auditoria completa com usuário, cargo, data, hora e IP.</span>
+            </li>
+            <li class="comp-item">
+              <span>•</span>
+              <span>Decisões embasadas em números reais atualizados no canteiro e escritório.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO: FEITO PARA O BRASIL & TECNOLOGIA
+       ======================================================================== -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Engenharia Nacional</div>
+        <h2 class="section-title">Feito para a realidade da construção civil brasileira.</h2>
+        <p class="section-subtitle">
+          Nada de softwares gringos traduzidos por máquina. O Futura foi desenhado para falar a língua dos canteiros de obras de todo o Brasil.
+        </p>
+      </div>
+
+      <div class="brazil-tags-grid">
+        <div class="brazil-tag-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <div class="brazil-tag-text">
+            <strong>Tabela SINAPI</strong>
+            <span>Base oficial da Caixa Econômica</span>
+          </div>
+        </div>
+
+        <div class="brazil-tag-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <div class="brazil-tag-text">
+            <strong>PIX & Boletos</strong>
+            <span>Métodos nativos brasileiros</span>
+          </div>
+        </div>
+
+        <div class="brazil-tag-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <div class="brazil-tag-text">
+            <strong>Bancos Nacionais</strong>
+            <span>Caixa, BB, Itaú, Bradesco e outros</span>
+          </div>
+        </div>
+
+        <div class="brazil-tag-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <div class="brazil-tag-text">
+            <strong>WhatsApp Integrado</strong>
+            <span>Envio direto para fornecedores</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 48px; text-align: center;">
+        <p style="font-size: 13px; color: var(--text-muted);">
+          Desenvolvido com tecnologia de ponta: <strong>Next.js</strong>, <strong>TypeScript</strong>, <strong>Tailwind CSS</strong>, <strong>Prisma ORM</strong> e <strong>PostgreSQL (Supabase)</strong>. Rápido no escritório, impecável no canteiro de obras.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO: TABELA DE PLANOS & PREÇOS (Hidratada via scripts/config.js)
+       ======================================================================== -->
+  <section class="section section-alt" id="planos">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Planos Transparentes</div>
+        <h2 class="section-title">Escolha o plano sob medida para o seu momento.</h2>
+        <p class="section-subtitle">
+          Comece gratuitamente e evolua conforme o número de obras e o tamanho da sua equipe aumentarem. Sem surpresas ou taxas ocultas.
+        </p>
+      </div>
+
+      <div class="pricing-grid" id="pricingGrid">
+        <!-- Hidratado dinamicamente a partir de scripts/config.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SEÇÃO: FAQ (DÚVIDAS FREQUENTES)
+       ======================================================================== -->
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-eyebrow">Perguntas Frequentes</div>
+        <h2 class="section-title">Tudo o que você precisa saber antes de começar.</h2>
+      </div>
+
+      <div class="faq-container">
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Preciso abandonar minhas planilhas de uma vez?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Não. Você pode continuar usando suas planilhas antigas como referência e até importá-las diretamente para o sistema através do nosso importador de Excel (.xlsx e .xls). O Futura assume o controle diário de compras e financeiro sem traumas.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Posso importar meu orçamento existente do Excel?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Sim! O Futura conta com uma funcionalidade dedicada de importação de planilhas. Basta subir o seu arquivo e o sistema estrutura os itens por etapas automaticamente.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>O sistema utiliza a base oficial SINAPI?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Sim. O módulo de SINAPI permite consultar composições de custos unitários e insumos oficiais da Caixa Econômica Federal atualizados para balizar seus orçamentos.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Posso gerenciar mais de uma obra ao mesmo tempo?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Com certeza. O sistema permite cadastrar e alternar entre múltiplas obras, com centros de custos isolados e visão financeira individual ou consolidada da construtora.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Como funciona o controle de permissões da equipe?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Você pode convidar engenheiros, compradores, administradores e operadores financeiros. Cada papel enxerga e executa apenas as ações pertinentes à sua função.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>O financeiro fica integrado com as compras?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            100% integrado. Assim que um pedido de compra é aprovado, a conta a pagar correspondente é gerada no módulo financeiro, com data de vencimento e centro de custo corretos.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Meus dados estão seguros? Posso fazer backup?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Seus dados são armazenados em banco de dados PostgreSQL seguro com criptografia. Você pode exportar uma cópia completa de segurança em arquivo JSON a qualquer momento com um clique. Nos planos Pro e Premium, há suporte à restauração em micro-lotes.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>O sistema funciona bem no celular?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Perfeitamente. O design é 100% responsivo para smartphones e tablets, permitindo que engenheiros e mestres de obras consultem orçamentos e aprovem compras diretamente do canteiro.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Posso começar gratuitamente?</span>
+            <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-content">
+            Sim! O Plano Gratuito permite gerenciar 1 obra com até 4 unidades e 2 usuários na equipe, com acesso a orçamentos, compras e financeiro sem pagar nada.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       FINAL CTA
+       ======================================================================== -->
+  <section class="final-cta-section">
+    <div class="container final-cta-container">
+      <h2 class="final-cta-title">
+        Quanto custa uma obra sem controle?
+      </h2>
+      <p class="final-cta-sub">
+        Agora compare esse prejuízo silencioso com o poder de ter orçamento, compras e financeiro trabalhando juntos pelo sucesso do seu empreendimento.
+      </p>
+
+      <div class="hero-ctas" style="justify-content: center;">
+        <a href="#" data-cta="signup" class="btn-primary btn-lg">
+          COMEÇAR AGORA GRATUITAMENTE
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+        <a href="#" data-cta="demo" class="btn-secondary btn-lg">
+          CONHECER O SISTEMA
+        </a>
+      </div>
+
+      <div style="font-size: 14px; color: var(--emerald-400); font-weight: 700; margin-top: 8px;">
+        Menos improviso. Mais controle.
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       FOOTER
+       ======================================================================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="brand-logo">
+            <div class="brand-icon">
+              <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+                <path d="M12 36V14L24 8L36 14V36" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/>
+                <path d="M24 16V38" stroke="#34D399" stroke-width="3.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="brand-text">
+              <span class="brand-name">FUTURA</span>
+              <span class="brand-tagline">CONTROLE DE OBRAS</span>
+            </div>
+          </div>
+          <p>
+            Controle cada centavo. Construa com mais previsibilidade. Da primeira cotação ao último pagamento, tudo conectado em um só ecossistema.
+          </p>
+        </div>
+
+        <div class="footer-column">
+          <h4>Plataforma</h4>
+          <ul class="footer-links">
+            <li><a href="#como-funciona">Como Funciona</a></li>
+            <li><a href="#anti-estouro">Regra Anti-Estouro</a></li>
+            <li><a href="#recursos">Orçamento & SINAPI</a></li>
+            <li><a href="#recursos">Cotações & Compras</a></li>
+            <li><a href="#recursos">Fluxo de Caixa</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-column">
+          <h4>Planos</h4>
+          <ul class="footer-links">
+            <li><a href="#planos">Plano Gratuito</a></li>
+            <li><a href="#planos">Plano Básico</a></li>
+            <li><a href="#planos">Plano Pro</a></li>
+            <li><a href="#planos">Plano Premium</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-column">
+          <h4>Acesso</h4>
+          <ul class="footer-links">
+            <li><a href="#" data-cta="login">Acessar Sistema</a></li>
+            <li><a href="#" data-cta="signup">Criar Conta Grátis</a></li>
+            <li><a href="#" data-cta="whatsapp">Suporte no WhatsApp</a></li>
+            <li><a href="#faq">Central de Dúvidas</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          &copy; <span id="currentYear">2026</span> Futura Controle de Obras SaaS. Todos os direitos reservados.
+        </div>
+        <div style="display: flex; gap: 16px;">
+          <span>Privacidade</span>
+          <span>•</span>
+          <span>Termos de Uso</span>
+          <span>•</span>
+          <span>Segurança</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================================================
+       MOBILE STICKY CTA BAR (Aparece ao rolar no celular)
+       ======================================================================== -->
+  <aside class="mobile-sticky-cta" id="mobileStickyCta" aria-label="Ação Rápida Mobile">
+    <div class="mobile-sticky-inner">
+      <div style="display: flex; flex-direction: column;">
+        <span style="font-size: 11px; font-weight: 800; color: #FFFFFF;">FUTURA CONTROLE</span>
+        <span style="font-size: 10px; color: var(--emerald-400);">Teste Grátis 1 Obra</span>
+      </div>
+      <a href="#" data-cta="signup" class="btn-primary" style="padding: 8px 18px; font-size: 13px;">
+        Começar Grátis
+      </a>
+    </div>
+  </aside>
+
+</body>
+</html>
