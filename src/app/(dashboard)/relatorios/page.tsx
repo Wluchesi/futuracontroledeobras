@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useProject } from '@/context/ProjectContext';
 import { useAuth, isSuperAdmin } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { BarChart3, Download, Printer, FileSpreadsheet, Users, FolderKanban, Calculator } from 'lucide-react';
+import { BarChart3, Download, Printer, FileSpreadsheet, Users, FolderKanban, Calculator, TrendingUp, Wallet } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import * as XLSX from 'xlsx';
 
@@ -137,6 +137,15 @@ export default function RelatoriosPage() {
           <Calculator className="w-4 h-4" />
           <span>Relatório de Orçamento completo</span>
         </button>
+        <button
+          onClick={() => setReportType('cash-flow')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            reportType === 'cash-flow' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4 text-emerald-500" />
+          <span>Fluxo de Caixa</span>
+        </button>
       </div>
 
       {/* Área Imprimível do Relatório */}
@@ -144,7 +153,12 @@ export default function RelatoriosPage() {
         <div className="border-b pb-3 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold text-slate-900 uppercase">
-              Relatório {reportType === 'cost-center' ? 'por Centro de Custo' : reportType === 'suppliers' ? 'de Fornecedores' : 'de Orçamento'}
+              Relatório {
+                reportType === 'cost-center' ? 'por Centro de Custo' : 
+                reportType === 'suppliers' ? 'de Fornecedores' : 
+                reportType === 'budget' ? 'de Orçamento' :
+                'de Fluxo de Caixa'
+              }
             </h2>
             <span className="text-xs text-slate-500 font-semibold">{selectedProject?.name} • Construtora Kitnet Passos</span>
           </div>
@@ -211,7 +225,7 @@ export default function RelatoriosPage() {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : reportType === 'budget' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -241,6 +255,82 @@ export default function RelatoriosPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        ) : (
+          /* Relatório de Fluxo de Caixa */
+          <div className="space-y-4">
+            {/* Cards de Resumo */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                <span className="text-[10px] uppercase font-bold text-emerald-700">Total Pago (Saídas)</span>
+                <p className="text-base font-extrabold text-emerald-800 mt-0.5">
+                  {formatCurrency(data.filter((r: any) => r.status === 'PAGO').reduce((a: number, b: any) => a + (b.amount || 0), 0))}
+                </p>
+              </div>
+              <div className="p-3 bg-sky-50 rounded-xl border border-sky-200">
+                <span className="text-[10px] uppercase font-bold text-sky-700">A Vencer (Compromissos)</span>
+                <p className="text-base font-extrabold text-sky-800 mt-0.5">
+                  {formatCurrency(data.filter((r: any) => r.status === 'A_VENCER').reduce((a: number, b: any) => a + (b.amount || 0), 0))}
+                </p>
+              </div>
+              <div className="p-3 bg-rose-50 rounded-xl border border-rose-200">
+                <span className="text-[10px] uppercase font-bold text-rose-700">Vencido (Em Atraso)</span>
+                <p className="text-base font-extrabold text-rose-800 mt-0.5">
+                  {formatCurrency(data.filter((r: any) => r.status === 'VENCIDO').reduce((a: number, b: any) => a + (b.amount || 0), 0))}
+                </p>
+              </div>
+              <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-white">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Saldo Projetado Final</span>
+                <p className="text-base font-extrabold text-emerald-400 mt-0.5">
+                  {formatCurrency(data.length > 0 ? data[data.length - 1].projectedBalance : 0)}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-[10px] font-bold uppercase text-slate-600 border-b">
+                    <th className="py-2.5 px-3">Vencimento</th>
+                    <th className="py-2.5 px-3">Pagamento</th>
+                    <th className="py-2.5 px-3">Descrição</th>
+                    <th className="py-2.5 px-3">Fornecedor</th>
+                    <th className="py-2.5 px-3">Centro de Custo</th>
+                    <th className="py-2.5 px-3">Forma Pgto</th>
+                    <th className="py-2.5 px-3 text-right">Valor</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-right">Saldo Projetado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
+                  {data.map((item: any) => (
+                    <tr key={item.id}>
+                      <td className="py-2.5 px-3 font-mono font-medium">{item.dueDate}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-500">{item.paymentDate}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-900">{item.description}</td>
+                      <td className="py-2.5 px-3 text-slate-700">{item.supplier}</td>
+                      <td className="py-2.5 px-3 text-slate-500 text-[11px]">{item.costCenter}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600 text-[11px]">{item.paymentMethod}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">{formatCurrency(item.amount)}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          item.status === 'PAGO' 
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                            : item.status === 'VENCIDO'
+                            ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                            : 'bg-amber-100 text-amber-800 border border-amber-200'
+                        }`}>
+                          {item.statusLabel || item.status}
+                        </span>
+                      </td>
+                      <td className={`py-2.5 px-3 text-right font-bold font-mono ${item.projectedBalance < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                        {formatCurrency(item.projectedBalance)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

@@ -170,6 +170,60 @@ export async function GET(request: Request) {
       return NextResponse.json(reportData);
     }
 
+    if (type === 'cash-flow') {
+      const accountsPayable = await prisma.accountPayable.findMany({
+        where: whereProject,
+        include: {
+          supplier: true,
+          costCenter: true,
+          project: true,
+        },
+        orderBy: { dueDate: 'asc' },
+      });
+
+      let initialBalance = 0;
+      if (projectId) {
+        const proj = await prisma.project.findUnique({ where: { id: projectId } });
+        if (proj) {
+          const bankAccount = await prisma.bankAccount.findFirst({ where: { companyId: proj.companyId } });
+          initialBalance = bankAccount ? bankAccount.initialBalance : 0;
+        }
+      }
+
+      let runningRealized = initialBalance;
+      let runningProjected = initialBalance;
+
+      const reportData = accountsPayable.map((item) => {
+        const statusInfo = getAccountPayableStatus(item.dueDate, item.paymentDate);
+        const isPaid = statusInfo.status === 'PAGO';
+
+        if (isPaid) {
+          runningRealized -= item.amount;
+          runningProjected -= item.amount;
+        } else {
+          runningProjected -= item.amount;
+        }
+
+        return {
+          id: item.id,
+          dueDate: new Date(item.dueDate).toLocaleDateString('pt-BR'),
+          paymentDate: item.paymentDate ? new Date(item.paymentDate).toLocaleDateString('pt-BR') : '-',
+          description: item.description,
+          supplier: item.supplier ? (item.supplier.tradeName || item.supplier.corporateName) : '-',
+          costCenter: item.costCenter?.name || '-',
+          paymentMethod: item.paymentMethod || 'PIX',
+          amount: item.amount,
+          status: statusInfo.status,
+          statusLabel: statusInfo.label,
+          badgeColor: statusInfo.badgeColor,
+          realizedBalance: runningRealized,
+          projectedBalance: runningProjected,
+        };
+      });
+
+      return NextResponse.json(reportData);
+    }
+
     return NextResponse.json({ error: 'Tipo de relatório inválido' }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

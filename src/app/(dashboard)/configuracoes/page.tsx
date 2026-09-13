@@ -14,6 +14,9 @@ import {
   Users,
   Database,
   Download,
+  Upload,
+  AlertTriangle,
+  Loader2,
   Zap,
   ArrowRight,
   Shield,
@@ -47,6 +50,57 @@ export default function ConfiguracoesPage() {
   const [profilePassword, setProfilePassword] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaveMsg, setProfileSaveMsg] = useState('');
+
+  // Estados de Restauração de Backup
+  const [restoringBackup, setRestoringBackup] = useState(false);
+  const [restoreSuccess, setRestoreSuccess] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [selectedBackupFile, setSelectedBackupFile] = useState<File | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedBackupFile(file);
+      setShowRestoreConfirm(true);
+      setRestoreSuccess(null);
+      setRestoreError(null);
+    }
+    e.target.value = '';
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!selectedBackupFile) return;
+    setRestoringBackup(true);
+    setRestoreError(null);
+    setRestoreSuccess(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedBackupFile);
+
+      const res = await fetch('/api/backup', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const s = data.restoredSummary || {};
+        const summaryText = `Backup restaurado com sucesso! (${s.companies || 0} empresas, ${s.projects || 0} obras, ${s.budgetItems || 0} orçamentos, ${s.purchases || 0} compras, ${s.suppliers || 0} fornecedores).`;
+        setRestoreSuccess(summaryText);
+        setShowRestoreConfirm(false);
+        setSelectedBackupFile(null);
+        refreshProjects();
+      } else {
+        setRestoreError(data.error || 'Erro ao processar restauração do backup.');
+      }
+    } catch (err: any) {
+      setRestoreError(err.message || 'Falha de conexão ao restaurar backup.');
+    } finally {
+      setRestoringBackup(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -618,28 +672,131 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Seção Backup do Banco de Dados — Apenas Super Admin */}
+      {/* Seção Backup e Restauração do Banco de Dados — Apenas Super Admin */}
       {isSuper && (
-        <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="glass-card p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center">
               <Database className="w-5 h-5 text-emerald-600 mr-2" />
-              Backup Geral da Plataforma (Super Admin)
+              Backup e Restauração Geral da Plataforma (Super Admin)
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Exportação de segurança completa do banco de dados (Obras, Orçamentos, Cotações, Compras, Financeiro e Fornecedores) em formato JSON estruturado.
+              Exporte uma cópia completa de segurança em arquivo JSON ou suba um arquivo de backup para restaurar obras, cotações, orçamentos, compras e financeiro.
             </p>
           </div>
-          <div className="flex items-center">
-            <a
-              href="/api/backup"
-              download="backup-gerenciador-de-obras.json"
-              className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition"
-            >
-              <Download className="w-4 h-4" />
-              <span>Fazer Download do Backup (.json)</span>
-            </a>
+
+          {restoreSuccess && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{restoreSuccess}</span>
+            </div>
+          )}
+
+          {restoreError && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-semibold flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{restoreError}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Download Backup */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div className="flex items-center space-x-2 text-slate-900 font-bold text-xs">
+                <Download className="w-4 h-4 text-slate-700" />
+                <span>Exportar Dados</span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Baixe um arquivo JSON completo com todas as tabelas e dados da plataforma.
+              </p>
+              <a
+                href="/api/backup"
+                download="backup-gerenciador-de-obras.json"
+                className="inline-flex items-center justify-center space-x-2 w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition"
+              >
+                <Download className="w-4 h-4" />
+                <span>Fazer Download do Backup (.json)</span>
+              </a>
+            </div>
+
+            {/* Upload/Restaurar Backup */}
+            <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-3">
+              <div className="flex items-center space-x-2 text-emerald-950 font-bold text-xs">
+                <Upload className="w-4 h-4 text-emerald-600" />
+                <span>Restaurar / Subir Backup</span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                Envie um arquivo JSON de backup previamente exportado para recuperar dados no sistema.
+              </p>
+              <label className="inline-flex items-center justify-center space-x-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer">
+                <Upload className="w-4 h-4" />
+                <span>Selecionar Arquivo de Backup (.json)</span>
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  disabled={restoringBackup}
+                />
+              </label>
+            </div>
           </div>
+
+          {/* Modal de Confirmação de Restauração */}
+          {showRestoreConfirm && (
+            <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+                <div className="flex items-center space-x-3 text-amber-600">
+                  <div className="p-2.5 bg-amber-100 rounded-2xl">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900">Confirmar Restauração de Backup</h3>
+                    <p className="text-xs text-slate-500 font-medium">Arquivo: {selectedBackupFile?.name}</p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                  <p className="font-semibold mb-1">Atenção:</p>
+                  <p>
+                    A restauração irá atualizar e sincronizar todas as informações do banco de dados (empresas, obras, centros de custo, orçamentos, compras e lançamentos financeiros) conforme os registros do arquivo.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRestoreConfirm(false);
+                      setSelectedBackupFile(null);
+                    }}
+                    disabled={restoringBackup}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmRestore}
+                    disabled={restoringBackup}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center space-x-1.5 shadow-md cursor-pointer"
+                  >
+                    {restoringBackup ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Restaurando dados...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>Confirmar e Restaurar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
