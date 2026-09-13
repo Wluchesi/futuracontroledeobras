@@ -6,10 +6,10 @@
  */
 
 window.FUTURA_CONFIG = {
-  // URLs do Sistema e Conversão (Substitua quando o ambiente de produção for definitivo)
-  APP_URL: "https://futuragerenciadordeobras.netlify.app/login",
-  SIGNUP_URL: "https://futuragerenciadordeobras.netlify.app/login?tab=register",
-  DEMO_URL: "https://futuragerenciadordeobras.netlify.app/login?demo=true",
+  // URLs do Sistema e Conversão
+  APP_URL: "https://app-futuragerenciadordeobras.netlify.app/login",
+  SIGNUP_URL: "https://app-futuragerenciadordeobras.netlify.app/cadastrar-empresa",
+  DEMO_URL: "https://app-futuragerenciadordeobras.netlify.app/login?demo=true",
   PRICING_URL: "#planos",
   WHATSAPP_URL: "https://wa.me/5511999999999?text=Ol%C3%A1%2C%20gostaria%20de%20conhecer%20o%20Futura%20Controle%20de%20Obras",
 
