@@ -5,6 +5,11 @@ import { AuthProvider } from '@/context/AuthContext';
 export const metadata: Metadata = {
   title: 'Futura Gestão de Obras — Financeiro, Orçamento & BI',
   description: 'Sistema web completo de gerenciamento financeiro, orçamentário e operacional de obras.',
+  icons: {
+    icon: '/Futura.png',
+    shortcut: '/Futura.png',
+    apple: '/Futura.png',
+  },
 };
 
 export default function RootLayout({
