@@ -2,6 +2,15 @@
   command = "npm run build"
   publish = ".next"
 
+[build.environment]
+  DATABASE_URL = "postgresql://postgres.kxigedvqpxlkcnxhsgql:C@n@l4141C@n@l4242C@n@l4343@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+  DIRECT_URL = "postgresql://postgres.kxigedvqpxlkcnxhsgql:C@n@l4141C@n@l4242C@n@l4343@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+  NEXTAUTH_SECRET = "gerenciador-de-obras-secret-key-2026-super-secure"
+  PAYMENT_GATEWAY_PROVIDER = "MERCADOPAGO"
+  MERCADO_PAGO_ACCESS_TOKEN = "TEST-4584434479379253-082013-102ff6668b12130697a50be7d0ce6ddc-9486513"
+  NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY = "TEST-12c1d73f-8963-4579-97e4-22f0ee2df61b"
+  NEXT_PUBLIC_GATEWAY_ENV = "sandbox"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
