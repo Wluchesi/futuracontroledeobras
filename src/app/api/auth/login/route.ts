@@ -33,6 +33,12 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Erro interno ao autenticar.' }, { status: 500 });
+    const isDbConfigError = !process.env.DATABASE_URL || error?.message?.includes('DATABASE_URL');
+    return NextResponse.json({ 
+      error: isDbConfigError 
+        ? 'Erro de configuração do servidor: DATABASE_URL não definida.' 
+        : 'Erro interno ao autenticar.',
+      details: process.env.NODE_ENV !== 'production' || isDbConfigError ? error?.message : undefined
+    }, { status: 500 });
   }
 }
