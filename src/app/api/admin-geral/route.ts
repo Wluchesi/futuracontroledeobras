@@ -206,12 +206,47 @@ export async function PUT(request: Request) {
       });
     }
 
-    // 4. AÇÃO: Editar Cadastro Completo da Empresa (Nome, CNPJ/CPF, Limites)
+    // 4. AÇÃO: Editar Cadastro Completo da Empresa (Nome, E-mail do Administrador, CNPJ/CPF, Limites)
     if (action === 'update_company') {
-      const { companyId, name, taxId, maxProjects, maxUsers } = body;
+      const { companyId, name, email, taxId, maxProjects, maxUsers } = body;
 
       if (!companyId || !name?.trim()) {
         return NextResponse.json({ error: 'ID e Nome da construtora são obrigatórios.' }, { status: 400 });
+      }
+
+      // Se foi enviado e-mail, atualiza o usuário administrador principal desta empresa
+      if (email && email.trim()) {
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Encontra o usuário administrador ou primeiro usuário vinculado a esta construtora
+        const primaryUser = await prisma.user.findFirst({
+          where: { companyId },
+          orderBy: [
+            { role: 'asc' }, // 'ADMIN' vem primeiro alfabeticamente
+            { createdAt: 'asc' },
+          ],
+        });
+
+        if (primaryUser && primaryUser.email.toLowerCase() !== normalizedEmail) {
+          const emailExists = await prisma.user.findFirst({
+            where: {
+              email: normalizedEmail,
+              NOT: { id: primaryUser.id },
+            },
+          });
+
+          if (emailExists) {
+            return NextResponse.json(
+              { error: `O e-mail "${normalizedEmail}" já está cadastrado para outro usuário.` },
+              { status: 400 }
+            );
+          }
+
+          await prisma.user.update({
+            where: { id: primaryUser.id },
+            data: { email: normalizedEmail },
+          });
+        }
       }
 
       const updatedCompany = await prisma.company.update({

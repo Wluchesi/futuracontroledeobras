@@ -62,6 +62,7 @@ export default function AdminGeralPage() {
   const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
   const [selectedCompanyForEdit, setSelectedCompanyForEdit] = useState<any>(null);
   const [editCompanyName, setEditCompanyName] = useState('');
+  const [editCompanyEmail, setEditCompanyEmail] = useState('');
   const [editCompanyTaxId, setEditCompanyTaxId] = useState('');
   const [editCompanyMaxProjects, setEditCompanyMaxProjects] = useState(1);
   const [editCompanyMaxUsers, setEditCompanyMaxUsers] = useState(2);
@@ -264,6 +265,8 @@ export default function AdminGeralPage() {
   const handleOpenEditCompany = (comp: any) => {
     setSelectedCompanyForEdit(comp);
     setEditCompanyName(comp.name || '');
+    const primaryUser = comp.users?.find((u: any) => u.role === 'ADMIN') || comp.users?.[0];
+    setEditCompanyEmail(primaryUser?.email || '');
     setEditCompanyTaxId(comp.taxId || '');
     setEditCompanyMaxProjects(comp.maxProjects || 1);
     setEditCompanyMaxUsers(comp.maxUsers || 2);
@@ -287,6 +290,7 @@ export default function AdminGeralPage() {
           userEmail: user?.email,
           companyId: selectedCompanyForEdit.id,
           name: editCompanyName,
+          email: editCompanyEmail,
           taxId: editCompanyTaxId,
           maxProjects: editCompanyMaxProjects,
           maxUsers: editCompanyMaxUsers,
@@ -621,8 +625,14 @@ export default function AdminGeralPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center space-x-3 text-xs text-slate-400 mt-0.5 font-medium">
-                        {comp.taxId && <span>CNPJ/CPF: {comp.taxId}</span>}
+                      <div className="flex items-center space-x-3 text-xs text-slate-400 mt-0.5 font-medium flex-wrap gap-y-1">
+                        {comp.users && comp.users.length > 0 && (
+                          <span className="flex items-center text-slate-700 font-semibold">
+                            <Mail className="w-3 h-3 mr-1 text-slate-400" />
+                            {comp.users.find((u: any) => u.role === 'ADMIN')?.email || comp.users[0]?.email}
+                          </span>
+                        )}
+                        {comp.taxId && <span>• CNPJ/CPF: {comp.taxId}</span>}
                         <span>• Cadastro: {formatDate(comp.createdAt)}</span>
                       </div>
                     </div>
@@ -1110,6 +1120,22 @@ export default function AdminGeralPage() {
                   onChange={(e) => setEditCompanyName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-emerald-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  E-mail de Acesso / Administrador:
+                </label>
+                <input
+                  type="email"
+                  placeholder="Ex: contato@construtora.com.br"
+                  value={editCompanyEmail}
+                  onChange={(e) => setEditCompanyEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono focus:outline-emerald-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  E-mail principal de login e comunicação do responsável por esta construtora.
+                </span>
               </div>
 
               <div>
