@@ -490,6 +490,34 @@ img, svg {
   position: relative;
 }
 
+.hero-image-card {
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.75), 0 0 45px rgba(16, 185, 129, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: #0F172A;
+}
+
+.mockup-image-container {
+  position: relative;
+  overflow: hidden;
+  background-color: #0B0F17;
+  display: block;
+}
+
+.hero-dashboard-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  transition: transform var(--transition-normal);
+}
+
+.hero-image-card:hover .hero-dashboard-img {
+  transform: scale(1.015);
+}
+
 .mockup-card {
   background-color: #0F172A;
   border: 1px solid rgba(255, 255, 255, 0.14);
