@@ -72,9 +72,37 @@ export default function Sidebar() {
     email: user?.email || '',
     avatarUrl: user?.avatarUrl,
     companyName: user?.company?.name || 'Construtora',
-    planName: user?.company?.planName || 'Premium Multi-Obras',
+    planName: user?.company?.planName || 'Plano Gratuito',
     role: user?.role || 'USER',
   };
+
+  const getPlanBadge = (fullPlanName?: string) => {
+    const p = (fullPlanName || '').toLowerCase();
+    if (p.includes('premium')) {
+      return {
+        label: 'Premium',
+        className: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+      };
+    }
+    if (p.includes('pro')) {
+      return {
+        label: 'Pro',
+        className: 'bg-blue-500/20 text-blue-300 border border-blue-500/40',
+      };
+    }
+    if (p.includes('teste')) {
+      return {
+        label: 'Teste',
+        className: 'bg-purple-500/20 text-purple-300 border border-purple-500/40',
+      };
+    }
+    return {
+      label: 'Gratuito',
+      className: 'bg-slate-800 text-slate-300 border border-slate-700',
+    };
+  };
+
+  const planBadge = getPlanBadge(userProfile.planName);
 
   const isAdmin = userProfile.role === 'ADMIN' || isSuper;
 
@@ -208,13 +236,18 @@ export default function Sidebar() {
         <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex flex-col space-y-2">
           
           {!collapsed && (
-            <div className="px-2 py-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-              <div className="flex flex-col truncate">
+            <div className="px-2 py-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+              <div className="flex flex-col truncate min-w-0">
                 <span className="text-[10px] text-slate-400 font-bold uppercase">Empresa Ativa</span>
-                <span className="text-xs font-bold text-emerald-400 truncate">{userProfile.companyName}</span>
+                <span className="text-xs font-bold text-emerald-400 truncate" title={userProfile.companyName}>
+                  {userProfile.companyName}
+                </span>
               </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
-                SaaS
+              <span
+                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0 ${planBadge.className}`}
+                title={`Plano da conta: ${userProfile.planName}`}
+              >
+                {planBadge.label}
               </span>
             </div>
           )}
