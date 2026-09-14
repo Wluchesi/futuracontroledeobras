@@ -48,11 +48,13 @@ export default function LoginPage() {
         
         {/* Brand */}
         <div className="flex flex-col items-center mb-8">
-          <div className="p-3 bg-emerald-500 text-slate-950 rounded-2xl shadow-lg font-bold mb-3 animate-bounce">
-            <HardHat className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-wide text-white text-center">FUTURA GESTÃO DE OBRAS</h1>
-          <p className="text-xs text-emerald-400 font-semibold tracking-wider uppercase mt-1">Financeiro, Orçamento & BI</p>
+          <img
+            src="/Futura.png"
+            alt="Futura Controle de Obras"
+            className="w-20 h-20 object-contain rounded-2xl shadow-xl mb-3 drop-shadow-[0_8px_16px_rgba(52,211,153,0.25)]"
+          />
+          <h1 className="text-2xl font-black tracking-wide text-white text-center">FUTURA CONTROLE DE OBRAS</h1>
+          <p className="text-xs text-emerald-400 font-semibold tracking-wider uppercase mt-1">Financeiro, Orçamento & Suprimentos</p>
         </div>
 
         <h2 className="text-lg font-medium text-slate-200 text-center mb-6">Acesse sua conta</h2>

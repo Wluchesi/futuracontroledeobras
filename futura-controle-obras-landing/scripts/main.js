@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.innerHTML = `
         ${ribbonHtml}
-        <h3 class="pricing-plan-name">${key.toUpperCase()}</h3>
+        <h3 class="pricing-plan-name">${plan.name || key.toUpperCase()}</h3>
         <p class="pricing-plan-desc">${plan.description || ''}</p>
         <div class="pricing-price-box">
           <div class="pricing-price">${plan.price}</div>

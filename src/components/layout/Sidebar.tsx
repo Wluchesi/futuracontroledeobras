@@ -177,14 +177,16 @@ export default function Sidebar() {
         {/* Brand Header */}
         <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800 bg-slate-950/40">
           <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="p-2 bg-emerald-500 text-slate-950 rounded-xl shadow-md font-bold flex-shrink-0">
-              <HardHat className="w-5 h-5" />
-            </div>
+            <img
+              src="/Futura.png"
+              alt="Futura"
+              className="w-8 h-8 object-contain rounded-xl shadow-md flex-shrink-0"
+            />
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="font-bold text-xs tracking-wide text-white whitespace-nowrap">FUTURA GESTÃO DE OBRAS</span>
+                <span className="font-bold text-xs tracking-wide text-white whitespace-nowrap">FUTURA CONTROLE DE OBRAS</span>
                 <span className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase flex items-center space-x-1">
-                  <span>SaaS Multi-Tenant</span>
+                  <span>Gestão Integrada</span>
                 </span>
               </div>
             )}

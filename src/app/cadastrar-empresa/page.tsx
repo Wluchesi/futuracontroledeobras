@@ -53,10 +53,12 @@ export default function CadastrarEmpresaPage() {
 
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="p-3 bg-emerald-500 text-slate-950 rounded-2xl shadow-lg font-bold">
-            <HardHat className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Criar Conta no Futura Gestão de Obras</h1>
+          <img
+            src="/Futura.png"
+            alt="Futura Controle de Obras"
+            className="w-20 h-20 object-contain rounded-2xl shadow-xl mb-1 drop-shadow-[0_8px_16px_rgba(52,211,153,0.25)]"
+          />
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Criar Conta no Futura Controle de Obras</h1>
           <p className="text-xs text-slate-400 max-w-sm">
             Cadastre sua construtora e comece a gerenciar suas obras, compras e financeiro em minutos.
           </p>

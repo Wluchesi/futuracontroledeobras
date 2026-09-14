@@ -13,77 +13,64 @@ window.FUTURA_CONFIG = {
   PRICING_URL: "#planos",
   WHATSAPP_URL: "https://wa.me/5511999999999?text=Ol%C3%A1%2C%20gostaria%20de%20conhecer%20o%20Futura%20Controle%20de%20Obras",
 
-  // Planos e Preços (Placeholders editáveis sem inventar valores fixos não confirmados)
+  // Planos e Preços Oficiais do Sistema (3 Planos Reais)
   PRICING: {
     gratuito: {
-      price: "Gratuito",
-      period: "para sempre",
+      name: "Plano Gratuito",
+      price: "R$ 0",
+      period: "/mês",
       badge: "Ideal para começar",
-      description: "Perfeito para profissionais autônomos ou para testar o sistema na sua primeira obra.",
+      description: "Perfeito para conhecer o sistema e controlar sua primeira construção pequena.",
       features: [
-        "1 Obra ativa (até 4 unidades/kitnets)",
-        "Até 2 usuários na equipe",
+        "1 Obra Ativa",
+        "Limite rígido de até 4 Kitnets/Unidades",
+        "Entrada manual de dados",
         "Orçamento executivo estruturado",
-        "Cotações e pedidos de compras",
+        "Lançamento de compras e despesas",
         "Contas a pagar e baixas financeiras",
-        "Exportação de relatórios em Excel/PDF"
+        "Ideal para testar a ferramenta"
       ],
       ctaText: "Começar Grátis",
       action: "signup"
     },
-    basico: {
-      price: "Consulte o plano",
-      period: "faturamento mensal ou anual",
-      badge: "Para pequenas construtoras",
-      description: "Controle financeiro e suprimentos para quem gerencia obras simultâneas.",
-      features: [
-        "Até 3 Obras simultâneas",
-        "Até 5 usuários com níveis de acesso",
-        "Todas as funções do plano gratuito",
-        "Regra anti-estouro (Modo Alerta)",
-        "Consulta à base SINAPI integrada",
-        "Importador de planilhas Excel (.xlsx)",
-        "Suporte por e-mail e WhatsApp"
-      ],
-      ctaText: "Escolher Plano Básico",
-      action: "signup"
-    },
     pro: {
-      price: "Consulte o plano",
-      period: "faturamento mensal ou anual",
-      badge: "Mais Escolhido por Construtoras",
+      name: "Kitneteiro Pro",
+      price: "R$ 49",
+      period: "/mês",
+      badge: "Mais Popular ⚡",
       isRecommended: true,
-      description: "O padrão definitivo para médias construtoras que exigem tolerância zero a prejuízos.",
+      description: "Para investidores e construtores que querem unidades ilimitadas em 1 obra ativa.",
       features: [
-        "Até 10 Obras simultâneas",
-        "Até 15 usuários com permissões avançadas",
-        "Regra anti-estouro (Alerta + Confirmação + Bloqueio Total)",
-        "Mapa comparativo inteligente de cotações",
-        "Fluxo de caixa projetado e relatórios executivos",
-        "Trilha de auditoria completa (Logs com IP/usuário)",
-        "Backup completo em 1 clique",
-        "Restauração inteligente em micro-lotes",
-        "Suporte prioritário via WhatsApp"
+        "1 Obra Ativa (Construção Principal)",
+        "Kitnets / Unidades ILIMITADAS (10, 12 ou mais)",
+        "Entrada manual de dados completa",
+        "Gestão avançada de orçamento & etapas",
+        "Cotações & comparativo de fornecedores",
+        "Gestão completa de compras e contas a pagar",
+        "Fluxo de caixa e gráficos financeiros",
+        "Exportação de relatórios em Excel e PDF"
       ],
-      ctaText: "Garantir Controle Máximo (Pro)",
+      ctaText: "Assinar Kitneteiro Pro",
       action: "signup"
     },
     premium: {
-      price: "Sob Consulta",
-      period: "atendimento corporativo",
-      badge: "Grandes Operações",
-      description: "Para empresas de engenharia com alto volume de compras e múltiplos canteiros.",
+      name: "Kitneteiro Premium",
+      price: "R$ 99",
+      period: "/mês",
+      badge: "Multi-Obras & SINAPI",
+      description: "Máximo controle: até 5 obras simultâneas com preços automáticos da base SINAPI.",
       features: [
-        "Obras ativas ilimitadas",
-        "Usuários da construtora ilimitados",
-        "Todos os recursos Pro inclusos",
-        "Treinamento dedicado para equipe de compras e engenharia",
-        "Customização de centros de custo e planos de contas",
-        "Backup e restauração em micro-lotes dedicada",
-        "Gerente de contas exclusivo"
+        "Até 5 Obras Simultâneas",
+        "Kitnets / Unidades ILIMITADAS por obra",
+        "Integração com Tabela SINAPI (Preços automáticos)",
+        "Rateio / divisão automática de compras em lote",
+        "Relatórios profissionais customizados (PDF/Excel)",
+        "Regra Anti-Estouro (Alerta, Confirmação e Bloqueio)",
+        "Importação de orçamentos via planilha Excel",
+        "Suporte prioritário via WhatsApp com especialista"
       ],
-      ctaText: "Falar com Especialista",
-      action: "whatsapp"
+      ctaText: "Garantir Plano Premium",
+      action: "signup"
     }
   },
 
