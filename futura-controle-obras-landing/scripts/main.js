@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </li>
       `).join('');
 
+      const btnClass = plan.buttonClass || (isFeatured ? 'btn-pricing-pro' : 'btn-pricing-free');
+
       card.innerHTML = `
         ${ribbonHtml}
         <h3 class="pricing-plan-name">${plan.name || key.toUpperCase()}</h3>
@@ -64,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <ul class="pricing-features">
           ${featuresHtml}
         </ul>
-        <a href="#" data-cta="${plan.action || 'signup'}" class="${isFeatured ? 'btn-primary' : 'btn-secondary'} btn-lg" style="width: 100%; text-align: center;">
+        <a href="#" data-cta="${plan.action || 'signup'}" class="${btnClass} pricing-cta-btn">
           ${plan.ctaText || 'Escolher Plano'}
         </a>
       `;

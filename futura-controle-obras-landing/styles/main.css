@@ -1328,6 +1328,83 @@ img, svg {
   margin-top: 2px;
 }
 
+/* Botões dos Cards de Preço */
+.pricing-cta-btn {
+  width: 100%;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Caso use btn-secondary no card branco */
+.pricing-card .btn-secondary {
+  background-color: #F8FAFC !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #0F172A !important;
+}
+.pricing-card .btn-secondary:hover {
+  background-color: #0F172A !important;
+  border-color: #0F172A !important;
+  color: #FFFFFF !important;
+}
+
+/* Botão Plano Gratuito */
+.btn-pricing-free {
+  background-color: #F8FAFC;
+  border: 1.5px solid #CBD5E1;
+  color: #0F172A;
+  font-size: 15px;
+  padding: 14px 24px;
+}
+.btn-pricing-free:hover {
+  background-color: #0F172A;
+  border-color: #0F172A;
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+/* Botão Kitneteiro Pro (Destaque Mais Popular) */
+.btn-pricing-pro {
+  background-color: var(--emerald-500);
+  border: 1.5px solid var(--emerald-500);
+  color: #064E3B;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 14px 24px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+.btn-pricing-pro:hover {
+  background-color: var(--emerald-400);
+  border-color: var(--emerald-400);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+/* Botão Kitneteiro Premium (Plano Mais Avançado) */
+.btn-pricing-premium {
+  background-color: #0F172A;
+  border: 1.5px solid #1E293B;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 14px 24px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+}
+.btn-pricing-premium:hover {
+  background-color: var(--emerald-500);
+  border-color: var(--emerald-500);
+  color: #064E3B;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
 /* ==========================================================================
    FAQ ACCORDION
    ========================================================================== */

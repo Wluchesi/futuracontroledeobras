@@ -30,6 +30,7 @@ window.FUTURA_CONFIG = {
         "Ideal para Testar a Ferramenta"
       ],
       ctaText: "Começar Grátis",
+      buttonClass: "btn-pricing-free",
       action: "signup"
     },
     pro: {
@@ -50,6 +51,7 @@ window.FUTURA_CONFIG = {
         "Exportação de Dados"
       ],
       ctaText: "Assinar Kitneteiro Pro",
+      buttonClass: "btn-pricing-pro",
       action: "signup"
     },
     premium: {
@@ -69,6 +71,7 @@ window.FUTURA_CONFIG = {
         "Suporte Prioritário por WhatsApp com Especialista"
       ],
       ctaText: "Assinar Kitneteiro Premium",
+      buttonClass: "btn-pricing-premium",
       action: "signup"
     }
   },
