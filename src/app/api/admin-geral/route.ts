@@ -206,6 +206,153 @@ export async function PUT(request: Request) {
       });
     }
 
+    // 4. AÇÃO: Editar Cadastro Completo da Empresa (Nome, CNPJ/CPF, Limites)
+    if (action === 'update_company') {
+      const { companyId, name, taxId, maxProjects, maxUsers } = body;
+
+      if (!companyId || !name?.trim()) {
+        return NextResponse.json({ error: 'ID e Nome da construtora são obrigatórios.' }, { status: 400 });
+      }
+
+      const updatedCompany = await prisma.company.update({
+        where: { id: companyId },
+        data: {
+          name: name.trim(),
+          taxId: taxId ? taxId.trim() : null,
+          ...(maxProjects !== undefined && maxProjects !== null ? { maxProjects: Number(maxProjects) } : {}),
+          ...(maxUsers !== undefined && maxUsers !== null ? { maxUsers: Number(maxUsers) } : {}),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Cadastro da empresa "${updatedCompany.name}" atualizado com sucesso!`,
+        company: updatedCompany,
+      });
+    }
+
+    // 5. AÇÃO: Excluir Empresa (Cascade em obras, usuários e lançamentos)
+    if (action === 'delete_company') {
+      const { companyId } = body;
+
+      if (!companyId) {
+        return NextResponse.json({ error: 'ID da empresa é obrigatório.' }, { status: 400 });
+      }
+
+      const companyToDelete = await prisma.company.findUnique({
+        where: { id: companyId },
+        include: { users: true },
+      });
+
+      if (!companyToDelete) {
+        return NextResponse.json({ error: 'Empresa não encontrada.' }, { status: 404 });
+      }
+
+      const hasCurrentUser = companyToDelete.users.some(
+        (u) => u.email.toLowerCase() === emailToCheck?.toLowerCase()
+      );
+      if (hasCurrentUser) {
+        return NextResponse.json(
+          { error: 'Não é permitido excluir a construtora vinculada ao seu usuário administrador ativo.' },
+          { status: 400 }
+        );
+      }
+
+      await prisma.company.delete({
+        where: { id: companyId },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Empresa "${companyToDelete.name}" e seus registros foram removidos com sucesso!`,
+      });
+    }
+
+    // 6. AÇÃO: Editar Cadastro Completo do Usuário (Nome, E-mail, Cargo, Senha opcional)
+    if (action === 'update_user') {
+      const { userId, name, email, role, newPassword } = body;
+
+      if (!userId || !name?.trim() || !email?.trim()) {
+        return NextResponse.json({ error: 'ID, Nome e E-mail do usuário são obrigatórios.' }, { status: 400 });
+      }
+
+      const normalizedEmail = email.toLowerCase().trim();
+
+      const existingUserWithEmail = await prisma.user.findFirst({
+        where: {
+          email: normalizedEmail,
+          NOT: { id: userId },
+        },
+      });
+
+      if (existingUserWithEmail) {
+        return NextResponse.json(
+          { error: `O e-mail "${normalizedEmail}" já pertence a outro usuário cadastrado no sistema.` },
+          { status: 400 }
+        );
+      }
+
+      const dataToUpdate: any = {
+        name: name.trim(),
+        email: normalizedEmail,
+        ...(role ? { role } : {}),
+      };
+
+      if (newPassword && newPassword.trim().length > 0) {
+        if (newPassword.trim().length < 6) {
+          return NextResponse.json(
+            { error: 'Se for alterar a senha, ela deve ter no mínimo 6 caracteres.' },
+            { status: 400 }
+          );
+        }
+        dataToUpdate.passwordHash = await bcrypt.hash(newPassword.trim(), 10);
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: dataToUpdate,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Cadastro do usuário "${updatedUser.name}" atualizado com sucesso!`,
+        user: updatedUser,
+      });
+    }
+
+    // 7. AÇÃO: Excluir Usuário
+    if (action === 'delete_user') {
+      const { userId } = body;
+
+      if (!userId) {
+        return NextResponse.json({ error: 'ID do usuário é obrigatório.' }, { status: 400 });
+      }
+
+      const userToDelete = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!userToDelete) {
+        return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+      }
+
+      if (userToDelete.email.toLowerCase() === emailToCheck?.toLowerCase()) {
+        return NextResponse.json(
+          { error: 'Você não pode excluir o seu próprio usuário administrador conectado.' },
+          { status: 400 }
+        );
+      }
+
+      await prisma.user.delete({
+        where: { id: userId },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Usuário "${userToDelete.name}" (${userToDelete.email}) excluído com sucesso!`,
+      });
+    }
+
     return NextResponse.json({ error: 'Ação inválida solicitada.' }, { status: 400 });
   } catch (error: any) {
     console.error('Error in admin-geral PUT:', error);

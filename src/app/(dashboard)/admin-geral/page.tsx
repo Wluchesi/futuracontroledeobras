@@ -11,6 +11,9 @@ import {
   Zap,
   Key,
   Edit3,
+  Pencil,
+  Trash2,
+  UserCog,
   CheckCircle2,
   AlertCircle,
   FolderKanban,
@@ -54,6 +57,26 @@ export default function AdminGeralPage() {
   const [customMaxProjects, setCustomMaxProjects] = useState(5);
   const [customMaxUsers, setCustomMaxUsers] = useState(10);
   const [savingPlan, setSavingPlan] = useState(false);
+
+  // Modal Editar Empresa
+  const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
+  const [selectedCompanyForEdit, setSelectedCompanyForEdit] = useState<any>(null);
+  const [editCompanyName, setEditCompanyName] = useState('');
+  const [editCompanyTaxId, setEditCompanyTaxId] = useState('');
+  const [editCompanyMaxProjects, setEditCompanyMaxProjects] = useState(1);
+  const [editCompanyMaxUsers, setEditCompanyMaxUsers] = useState(2);
+  const [savingCompany, setSavingCompany] = useState(false);
+  const [deletingCompany, setDeletingCompany] = useState(false);
+
+  // Modal Editar Usuário
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<any>(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserEmail, setEditUserEmail] = useState('');
+  const [editUserRole, setEditUserRole] = useState('ADMIN');
+  const [editUserPassword, setEditUserPassword] = useState('');
+  const [savingUser, setSavingUser] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   // Modal Redefinir Senha
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -234,6 +257,184 @@ export default function AdminGeralPage() {
       setErrorMsg('Erro de rede ao alterar cargo.');
     } finally {
       setSavingRole(false);
+    }
+  };
+
+  // Abrir Modal de Edição de Empresa
+  const handleOpenEditCompany = (comp: any) => {
+    setSelectedCompanyForEdit(comp);
+    setEditCompanyName(comp.name || '');
+    setEditCompanyTaxId(comp.taxId || '');
+    setEditCompanyMaxProjects(comp.maxProjects || 1);
+    setEditCompanyMaxUsers(comp.maxUsers || 2);
+    setShowEditCompanyModal(true);
+  };
+
+  // Salvar Alteração de Dados da Empresa
+  const handleSaveEditCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompanyForEdit) return;
+
+    try {
+      setSavingCompany(true);
+      setErrorMsg(null);
+
+      const res = await fetch('/api/admin-geral', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_company',
+          userEmail: user?.email,
+          companyId: selectedCompanyForEdit.id,
+          name: editCompanyName,
+          taxId: editCompanyTaxId,
+          maxProjects: editCompanyMaxProjects,
+          maxUsers: editCompanyMaxUsers,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setSuccessMsg(json.message);
+        setShowEditCompanyModal(false);
+        fetchAdminData();
+        setTimeout(() => setSuccessMsg(null), 5000);
+      } else {
+        setErrorMsg(json.error || 'Erro ao atualizar dados da construtora.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg('Erro de rede ao salvar construtora.');
+    } finally {
+      setSavingCompany(false);
+    }
+  };
+
+  // Excluir Construtora Definitivamente
+  const handleDeleteCompany = async () => {
+    if (!selectedCompanyForEdit) return;
+    const confirmDelete = window.confirm(
+      `ATENÇÃO: Tem certeza que deseja excluir definitivamente a construtora "${selectedCompanyForEdit.name}"?\nTodos os usuários, obras, compras e registros vinculados serão apagados permanentemente!`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingCompany(true);
+      setErrorMsg(null);
+
+      const res = await fetch('/api/admin-geral', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_company',
+          userEmail: user?.email,
+          companyId: selectedCompanyForEdit.id,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setSuccessMsg(json.message);
+        setShowEditCompanyModal(false);
+        fetchAdminData();
+        setTimeout(() => setSuccessMsg(null), 5000);
+      } else {
+        setErrorMsg(json.error || 'Erro ao excluir construtora.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg('Erro de rede ao excluir construtora.');
+    } finally {
+      setDeletingCompany(false);
+    }
+  };
+
+  // Abrir Modal de Edição de Usuário
+  const handleOpenEditUser = (u: any) => {
+    setSelectedUserForEdit(u);
+    setEditUserName(u.name || '');
+    setEditUserEmail(u.email || '');
+    setEditUserRole(u.role || 'ADMIN');
+    setEditUserPassword('');
+    setShowEditUserModal(true);
+  };
+
+  // Salvar Edição de Dados do Usuário
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserForEdit) return;
+
+    try {
+      setSavingUser(true);
+      setErrorMsg(null);
+
+      const res = await fetch('/api/admin-geral', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_user',
+          userEmail: user?.email,
+          userId: selectedUserForEdit.id,
+          name: editUserName,
+          email: editUserEmail,
+          role: editUserRole,
+          newPassword: editUserPassword || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setSuccessMsg(json.message);
+        setShowEditUserModal(false);
+        fetchAdminData();
+        setTimeout(() => setSuccessMsg(null), 5000);
+      } else {
+        setErrorMsg(json.error || 'Erro ao atualizar dados do usuário.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg('Erro de rede ao atualizar usuário.');
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  // Excluir Usuário
+  const handleDeleteUser = async () => {
+    if (!selectedUserForEdit) return;
+    const confirmDelete = window.confirm(
+      `Tem certeza que deseja excluir o usuário "${selectedUserForEdit.name}" (${selectedUserForEdit.email})?`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingUser(true);
+      setErrorMsg(null);
+
+      const res = await fetch('/api/admin-geral', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_user',
+          userEmail: user?.email,
+          userId: selectedUserForEdit.id,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setSuccessMsg(json.message);
+        setShowEditUserModal(false);
+        fetchAdminData();
+        setTimeout(() => setSuccessMsg(null), 5000);
+      } else {
+        setErrorMsg(json.error || 'Erro ao excluir usuário.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg('Erro de rede ao excluir usuário.');
+    } finally {
+      setDeletingUser(false);
     }
   };
 
@@ -448,6 +649,15 @@ export default function AdminGeralPage() {
                       <span>Alterar Plano</span>
                     </button>
 
+                    <button
+                      onClick={() => handleOpenEditCompany(comp)}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold rounded-xl transition cursor-pointer"
+                      title="Editar nome, CNPJ/CPF e limites da construtora"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Editar Cadastro</span>
+                    </button>
+
                     {!isCurrent && (
                       <button
                         onClick={() => {
@@ -542,7 +752,15 @@ export default function AdminGeralPage() {
                                 </span>
                               </td>
                               <td className="py-2.5 px-3 text-slate-400">{formatDate(u.createdAt)}</td>
-                              <td className="py-2.5 px-3 text-right space-x-1">
+                              <td className="py-2.5 px-3 text-right space-x-1.5 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleOpenEditUser(u)}
+                                  className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] rounded-lg border border-blue-200 transition cursor-pointer"
+                                  title="Editar cadastro completo do usuário (Nome, E-mail, Cargo, Senha)"
+                                >
+                                  <Edit3 className="w-3 h-3 text-blue-600" />
+                                  <span>Editar</span>
+                                </button>
                                 <button
                                   onClick={() => {
                                     setSelectedUserForPassword(u);
@@ -552,7 +770,7 @@ export default function AdminGeralPage() {
                                   className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] rounded-lg transition cursor-pointer"
                                   title="Redefinir senha para suporte"
                                 >
-                                  Redefinir Senha
+                                  Senha
                                 </button>
                                 <button
                                   onClick={() => {
@@ -852,6 +1070,238 @@ export default function AdminGeralPage() {
                 >
                   {savingRole ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Salvar Cargo'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 4: Editar Cadastro da Empresa */}
+      {showEditCompanyModal && selectedCompanyForEdit && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                  Gestão de Cadastro
+                </span>
+                <h2 className="text-lg font-black text-slate-900">
+                  Editar Construtora — {selectedCompanyForEdit.name}
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowEditCompanyModal(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditCompany} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nome da Construtora / Razão Social:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Minha Construtora Ltda"
+                  value={editCompanyName}
+                  onChange={(e) => setEditCompanyName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  CNPJ ou CPF (Opcional):
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: 00.000.000/0001-00"
+                  value={editCompanyTaxId}
+                  onChange={(e) => setEditCompanyTaxId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Limite de Obras:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={editCompanyMaxProjects}
+                    onChange={(e) => setEditCompanyMaxProjects(Number(e.target.value))}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Limite de Usuários:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={editCompanyMaxUsers}
+                    onChange={(e) => setEditCompanyMaxUsers(Number(e.target.value))}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-slate-500 text-[11px] space-y-1">
+                <p>• Plano Atual: <strong>{selectedCompanyForEdit.planName}</strong></p>
+                <p>• ID no Banco: <span className="font-mono text-[10px]">{selectedCompanyForEdit.id}</span></p>
+                <p>• Obras / Usuários Ativos: {selectedCompanyForEdit._count?.projects || 0} obra(s) / {selectedCompanyForEdit._count?.users || 0} usuário(s)</p>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-between items-center border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleDeleteCompany}
+                  disabled={deletingCompany || savingCompany}
+                  className="w-full sm:w-auto px-3.5 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 hover:border-rose-300 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{deletingCompany ? 'Excluindo...' : 'Excluir Construtora'}</span>
+                </button>
+
+                <div className="flex space-x-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditCompanyModal(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingCompany}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex justify-center items-center cursor-pointer shadow-md"
+                  >
+                    {savingCompany ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Salvar Alterações'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 5: Editar Cadastro do Usuário */}
+      {showEditUserModal && selectedUserForEdit && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                  Gestão de Usuário
+                </span>
+                <h2 className="text-lg font-black text-slate-900">
+                  Editar Cadastro do Usuário
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowEditUserModal(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nome Completo:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome do usuário"
+                  value={editUserName}
+                  onChange={(e) => setEditUserName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  E-mail de Acesso (Login):
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="email@empresa.com"
+                  value={editUserEmail}
+                  onChange={(e) => setEditUserEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono focus:outline-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Cargo / Perfil de Acesso:
+                </label>
+                <select
+                  value={editUserRole}
+                  onChange={(e) => setEditUserRole(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:outline-emerald-500"
+                >
+                  <option value="ADMIN">ADMIN (Acesso Total e Gestão)</option>
+                  <option value="ENGENHEIRO">ENGENHEIRO (Acesso Técnico e Canteiro)</option>
+                  <option value="COMPRADOR">COMPRADOR (Cotações e Suprimentos)</option>
+                  <option value="FINANCEIRO">FINANCEIRO (Contas a Pagar e Fluxo)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nova Senha (Opcional):
+                </label>
+                <input
+                  type="text"
+                  placeholder="Deixe em branco para manter a senha atual"
+                  value={editUserPassword}
+                  onChange={(e) => setEditUserPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono focus:outline-emerald-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Preencha somente se desejar alterar a senha deste usuário agora (mínimo 6 dígitos).
+                </span>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-between items-center border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleDeleteUser}
+                  disabled={deletingUser || savingUser}
+                  className="w-full sm:w-auto px-3.5 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 hover:border-rose-300 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{deletingUser ? 'Excluindo...' : 'Excluir Usuário'}</span>
+                </button>
+
+                <div className="flex space-x-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUserModal(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingUser}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex justify-center items-center cursor-pointer shadow-md"
+                  >
+                    {savingUser ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Salvar Alterações'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
